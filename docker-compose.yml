@@ -9,8 +9,8 @@ services:
 
   postgres:
     image: postgres:14.23-alpine3.23
-    environment:
-      - POSTGRES_PASSWORD=unsettling
+    env_file:
+      - .env
     ports:
       - 5431:5432
     volumes:
