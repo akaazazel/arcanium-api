@@ -4,7 +4,8 @@ volumes:
 services:
     fastapi:
         build: .
-        command: [ "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000" ]
+        command: >
+            sh -c "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
         env_file:
             - .env
         ports:

@@ -11,7 +11,10 @@ from app.database.database import Base
 from app.database.models import User, Note
 
 load_dotenv()
-DB_URL = os.getenv("POSTGRES_DB_URL") or ""
+DB_URL = os.getenv("POSTGRES_DB_URL")
+
+if DB_URL is None:
+    raise RuntimeError("POSTGRES_DB_URL env variable is required!")
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
