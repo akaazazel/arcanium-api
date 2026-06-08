@@ -7,8 +7,8 @@ from alembic import context
 
 import os
 from dotenv import load_dotenv
-from app.database.database import Base
-from app.database.models import User, Note
+from app.database import Base
+from app.models.models import User, Note
 
 load_dotenv()
 DB_URL = os.getenv("POSTGRES_DB_URL")
