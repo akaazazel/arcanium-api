@@ -1,6 +1,8 @@
-import jwt, os
+import os
+from datetime import UTC, datetime, timedelta
+
+import jwt
 from dotenv import load_dotenv
-from datetime import datetime, timedelta, UTC
 from fastapi.security import OAuth2PasswordBearer
 from pwdlib import PasswordHash
 
@@ -22,7 +24,7 @@ def verify_password(plain_password: str, hash_password: str) -> bool:
     return password_hash.verify(plain_password, hash_password)
 
 
-def create_access_token(data, expire_delta) -> str:
+def create_token(data, expire_delta: timedelta, type: str) -> str:
     to_encode = data.copy()
 
     if expire_delta:
@@ -30,7 +32,12 @@ def create_access_token(data, expire_delta) -> str:
     else:
         expire = datetime.now(UTC) + timedelta(minutes=int(TOKEN_EXPIRY_MINUTES))
 
-    to_encode.update({"exp": expire})
+    to_encode.update(
+        {
+            "exp": expire,
+            "type": type,
+        }
+    )
 
     encoded_jwt = jwt.encode(
         payload=to_encode,
@@ -41,14 +48,20 @@ def create_access_token(data, expire_delta) -> str:
     return encoded_jwt
 
 
-def verify_access_token(token: str) -> str | None:
+def verify_token(token: str | None, token_type: str) -> str | None:
+    if token is None:
+        return None
+
     try:
         decoded_jwt = jwt.decode(
             jwt=token,
             key=SECRET_KEY,
             algorithms=ALGORITHM,
-            options={"require": ["exp", "sub"]},
+            options={"require": ["exp", "sub", "type"]},
         )
+
+        if not (token_type == decoded_jwt.get("type")):
+            raise jwt.InvalidTokenError("Invalid token type!")
 
     except jwt.InvalidTokenError:
         return None
