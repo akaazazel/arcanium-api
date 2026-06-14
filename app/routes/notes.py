@@ -36,7 +36,7 @@ async def create_note(
     }
 
 
-@router.get("/notes/{note_id}")
+@router.get("/notes/{note_id}", response_model=NoteResponse)
 async def get_note(
     note_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -62,9 +62,26 @@ async def get_note(
     )
 
 
-@router.get("/notes")
-async def get_notes():
-    pass
+@router.get("/notes", response_model=list[NoteResponse])
+async def get_notes(
+    user: Annotated[UserResponse, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    response = await db.execute(select(Note).where(Note.owner == user.id))
+
+    notes = response.scalars().all()
+    decrypted_notes: list[NoteResponse] = []
+
+    for note in notes:
+        decrypted_notes.append(
+            NoteResponse(
+                id=note.id,
+                title=decrypt(note.title),
+                content=decrypt(note.content),
+            )
+        )
+
+    return decrypted_notes
 
 
 @router.put("/notes/{note_id}")
