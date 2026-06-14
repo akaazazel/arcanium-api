@@ -90,5 +90,26 @@ async def update_notes():
 
 
 @router.delete("/notes/{note_id}")
-async def delete_note():
-    pass
+async def delete_note(
+    note_id: int,
+    user: Annotated[UserResponse, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await db.execute(
+        select(Note).where(
+            (Note.id == note_id) & (Note.owner == user.id),
+        )
+    )
+
+    note = result.scalars().first()
+
+    if note is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="The note is not found!",
+        )
+
+    await db.delete(note)
+    await db.commit()
+
+    return {"message": "Note deleted!"}
