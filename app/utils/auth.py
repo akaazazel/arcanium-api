@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import jwt
 from app.settings import settings
@@ -17,7 +18,7 @@ def verify_password(plain_password: str, hash_password: str) -> bool:
     return password_hash.verify(plain_password, hash_password)
 
 
-def create_token(data, expire_delta: timedelta, type: str) -> str:
+def create_token(data: dict[str, Any], expire_delta: timedelta, token_type: str) -> str:
     to_encode = data.copy()
 
     if expire_delta:
@@ -30,7 +31,7 @@ def create_token(data, expire_delta: timedelta, type: str) -> str:
     to_encode.update(
         {
             "exp": expire,
-            "type": type,
+            "type": token_type,
         }
     )
 
