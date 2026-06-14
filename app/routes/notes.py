@@ -1,13 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Annotated
-from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.database import get_db
 from app.routes.auth import get_current_user
 from app.schemas.schemas import NoteCreate, NoteResponse, UserResponse
-from app.models.models import Note
-from app.database import get_db
-from datetime import datetime, UTC
-from app.utils.notes import encrypt, decrypt
-from sqlalchemy import select
+from app.services import notes
+from app.utils.notes import decrypt
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(tags=["notes"])
 
@@ -19,20 +18,11 @@ async def create_note(
     user: Annotated[UserResponse, Depends(get_current_user)],
 ):
 
-    new_note = Note(
-        title=encrypt(note_data.title),
-        content=encrypt(note_data.content),
-        owner=user.id,
-        created_at=datetime.now(UTC),
-    )
-
-    db.add(new_note)
-    await db.commit()
-    await db.refresh(new_note)
+    response = await notes.create_note(note_data=note_data, user_id=user.id, db=db)
 
     return {
         "message": "Note created",
-        "id": new_note.id,
+        "id": response,
     }
 
 
@@ -42,23 +32,12 @@ async def get_note(
     db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[UserResponse, Depends(get_current_user)],
 ):
-    result = await db.execute(
-        select(Note).where(
-            (Note.id == note_id) & (Note.owner == user.id),
-        )
-    )
-    note = result.scalars().first()
-
-    if note is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="The note is not found!",
-        )
+    result = await notes.get_note(note_id=note_id, user_id=user.id, db=db)
 
     return NoteResponse(
-        id=note.id,
-        title=decrypt(note.title),
-        content=decrypt(note.content),
+        id=result.id,
+        title=decrypt(result.title),
+        content=decrypt(result.content),
     )
 
 
@@ -67,21 +46,8 @@ async def get_notes(
     user: Annotated[UserResponse, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    response = await db.execute(select(Note).where(Note.owner == user.id))
 
-    notes = response.scalars().all()
-    decrypted_notes: list[NoteResponse] = []
-
-    for note in notes:
-        decrypted_notes.append(
-            NoteResponse(
-                id=note.id,
-                title=decrypt(note.title),
-                content=decrypt(note.content),
-            )
-        )
-
-    return decrypted_notes
+    return await notes.get_notes(user.id, db)
 
 
 @router.put("/notes/{note_id}")
@@ -91,25 +57,9 @@ async def update_notes(
     user: Annotated[UserResponse, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(
-        select(Note).where(
-            (Note.id == note_id) & (Note.owner == user.id),
-        )
+    result = await notes.update_note(
+        user_id=user.id, note_id=note_id, note_data=note_data, db=db
     )
-
-    note = result.scalars().first()
-
-    if note is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="The note is not found!",
-        )
-
-    note.title = encrypt(note_data.title)
-    note.content = encrypt(note_data.title)
-
-    await db.commit()
-    await db.refresh(note)
 
     return {"message": "Note updated!"}
 
@@ -120,21 +70,10 @@ async def delete_note(
     user: Annotated[UserResponse, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(
-        select(Note).where(
-            (Note.id == note_id) & (Note.owner == user.id),
-        )
+    result = await notes.delete_note(
+        note_id=note_id,
+        user_id=user.id,
+        db=db,
     )
-
-    note = result.scalars().first()
-
-    if note is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="The note is not found!",
-        )
-
-    await db.delete(note)
-    await db.commit()
 
     return {"message": "Note deleted!"}

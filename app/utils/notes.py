@@ -13,11 +13,9 @@ if ENCRYPTION_KEY is None:
 cipher = Fernet(key=ENCRYPTION_KEY)
 
 
-def encrypt(plain_text: str):
-
+def encrypt(plain_text: str) -> str:
     return cipher.encrypt(plain_text.encode()).decode()
 
 
-def decrypt(encrypted_text: str):
-
+def decrypt(encrypted_text: str) -> str:
     return cipher.decrypt(encrypted_text.encode()).decode()
