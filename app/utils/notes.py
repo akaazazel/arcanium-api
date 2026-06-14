@@ -1,4 +1,4 @@
-from app.settings import settings
+from app.core.settings import settings
 from cryptography.fernet import Fernet
 
 cipher = Fernet(key=settings.encryption_key)

@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt
-from app.settings import settings
+from app.core.settings import settings
 from fastapi.security import OAuth2PasswordBearer
 from pwdlib import PasswordHash
 

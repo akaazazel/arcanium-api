@@ -40,3 +40,15 @@ class NoteResponse(NoteBase):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+
+# Generic Response
+
+
+class CreatedResponse(BaseModel):
+    message: str
+    id: int
+
+
+class GenericResponse(BaseModel):
+    message: str

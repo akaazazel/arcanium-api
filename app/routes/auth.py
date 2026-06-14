@@ -4,7 +4,7 @@ from typing import Annotated
 from app.database import get_db
 from app.models import models
 from app.schemas.schemas import Token, UserCreate, UserResponse
-from app.settings import settings
+from app.core.settings import settings
 from app.utils.auth import (
     create_token,
     hash_password,
@@ -86,7 +86,7 @@ async def login(
     return Token(access_token=access_token, token_type="bearer")
 
 
-@router.get("/refresh")
+@router.get("/refresh", response_model=Token)
 async def refresh(refresh_token: Annotated[str | None, Cookie()]):
     user_id = verify_token(refresh_token, "refresh")
 
