@@ -85,8 +85,33 @@ async def get_notes(
 
 
 @router.put("/notes/{note_id}")
-async def update_notes():
-    pass
+async def update_notes(
+    note_data: NoteCreate,
+    note_id: int,
+    user: Annotated[UserResponse, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await db.execute(
+        select(Note).where(
+            (Note.id == note_id) & (Note.owner == user.id),
+        )
+    )
+
+    note = result.scalars().first()
+
+    if note is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="The note is not found!",
+        )
+
+    note.title = encrypt(note_data.title)
+    note.content = encrypt(note_data.title)
+
+    await db.commit()
+    await db.refresh(note)
+
+    return {"message": "Note updated!"}
 
 
 @router.delete("/notes/{note_id}")
