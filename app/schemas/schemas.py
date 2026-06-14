@@ -21,7 +21,7 @@ class UserResponse(UserBase):
 
 class NoteBase(BaseModel):
     title: str
-    content: str
+    content: str = ""
 
 
 class NoteCreate(NoteBase):

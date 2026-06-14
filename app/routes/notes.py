@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.routes.auth import get_current_user
@@ -7,11 +7,12 @@ from app.models.models import Note
 from app.database import get_db
 from datetime import datetime, UTC
 from app.utils.notes import encrypt, decrypt
+from sqlalchemy import select
 
 router = APIRouter(tags=["notes"])
 
 
-@router.post("/note")
+@router.post("/notes")
 async def create_note(
     note_data: NoteCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -35,21 +36,42 @@ async def create_note(
     }
 
 
-@router.get("/note/{note_id}")
-async def get_note():
-    pass
+@router.get("/notes/{note_id}")
+async def get_note(
+    note_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[UserResponse, Depends(get_current_user)],
+):
+    result = await db.execute(
+        select(Note).where(
+            (Note.id == note_id) & (Note.owner == user.id),
+        )
+    )
+    note = result.scalars().first()
+
+    if note is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="The note is not found!",
+        )
+
+    return NoteResponse(
+        id=note.id,
+        title=decrypt(note.title),
+        content=decrypt(note.content),
+    )
 
 
-@router.get("/note")
+@router.get("/notes")
 async def get_notes():
     pass
 
 
-@router.put("/note/{note_id}")
+@router.put("/notes/{note_id}")
 async def update_notes():
     pass
 
 
-@router.delete("/note/{note_id}")
+@router.delete("/notes/{note_id}")
 async def delete_note():
     pass

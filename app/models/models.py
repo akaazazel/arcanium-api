@@ -14,8 +14,9 @@ class Note(Base):
         primary_key=True,
         index=True,
     )
-    title: Mapped[str | None] = mapped_column(
+    title: Mapped[str] = mapped_column(
         String(255),
+        nullable=False,
     )
     content: Mapped[str] = mapped_column(
         Text,
