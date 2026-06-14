@@ -1,19 +1,9 @@
-import os
 from datetime import UTC, datetime, timedelta
 
 import jwt
-from dotenv import load_dotenv
+from app.settings import settings
 from fastapi.security import OAuth2PasswordBearer
 from pwdlib import PasswordHash
-
-load_dotenv()
-
-TOKEN_EXPIRY_MINUTES = os.getenv("TOKEN_EXPIRY_MINUTES") or "30"
-ALGORITHM = os.getenv("ALGORITHM") or "HS256"
-SECRET_KEY = os.getenv("SECRET_KEY")
-
-if SECRET_KEY is None:
-    raise RuntimeError("SECRET_KEY env variable is missing!")
 
 password_hash = PasswordHash.recommended()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -33,7 +23,9 @@ def create_token(data, expire_delta: timedelta, type: str) -> str:
     if expire_delta:
         expire = datetime.now(UTC) + expire_delta
     else:
-        expire = datetime.now(UTC) + timedelta(minutes=int(TOKEN_EXPIRY_MINUTES))
+        expire = datetime.now(UTC) + timedelta(
+            minutes=int(settings.token_expiry_minutes)
+        )
 
     to_encode.update(
         {
@@ -44,8 +36,8 @@ def create_token(data, expire_delta: timedelta, type: str) -> str:
 
     encoded_jwt = jwt.encode(
         payload=to_encode,
-        key=SECRET_KEY,
-        algorithm=ALGORITHM,
+        key=settings.secret_key,
+        algorithm=settings.algorithm,
     )
 
     return encoded_jwt
@@ -58,8 +50,8 @@ def verify_token(token: str | None, token_type: str) -> str | None:
     try:
         decoded_jwt = jwt.decode(
             jwt=token,
-            key=SECRET_KEY,
-            algorithms=ALGORITHM,
+            key=settings.secret_key,
+            algorithms=settings.algorithm,
             options={"require": ["exp", "sub", "type"]},
         )
 

@@ -1,16 +1,7 @@
+from app.settings import settings
 from cryptography.fernet import Fernet
-import os
-from dotenv import load_dotenv
 
-load_dotenv()
-
-ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
-
-if ENCRYPTION_KEY is None:
-    raise RuntimeError("ENCRYPTION_KEY env variable is missing!")
-
-
-cipher = Fernet(key=ENCRYPTION_KEY)
+cipher = Fernet(key=settings.encryption_key)
 
 
 def encrypt(plain_text: str) -> str:

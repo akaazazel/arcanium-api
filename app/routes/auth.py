@@ -1,10 +1,10 @@
-import os
 from datetime import timedelta
 from typing import Annotated
 
 from app.database import get_db
 from app.models import models
 from app.schemas.schemas import Token, UserCreate, UserResponse
+from app.settings import settings
 from app.utils.auth import (
     create_token,
     hash_password,
@@ -12,16 +12,10 @@ from app.utils.auth import (
     verify_password,
     verify_token,
 )
-from dotenv import load_dotenv
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-load_dotenv()
-
-TOKEN_EXPIRY_MINUTES = os.getenv("TOKEN_EXPIRY_MINUTES") or "30"
-TOKEN_EXPIRY_DAYS = os.getenv("TOKEN_EXPIRY_DAYS") or "28"
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -75,10 +69,10 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token_expiry = timedelta(minutes=int(TOKEN_EXPIRY_MINUTES))
+    access_token_expiry = timedelta(minutes=int(settings.token_expiry_minutes))
     access_token = create_token({"sub": str(user.id)}, access_token_expiry, "access")
 
-    refresh_token_expiry = timedelta(minutes=int(TOKEN_EXPIRY_MINUTES))
+    refresh_token_expiry = timedelta(minutes=int(settings.token_expiry_days))
     refresh_token = create_token({"sub": str(user.id)}, refresh_token_expiry, "refresh")
 
     response.set_cookie(
@@ -99,7 +93,7 @@ async def refresh(refresh_token: Annotated[str | None, Cookie()]):
     if user_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
-    access_token_expiry = timedelta(minutes=int(TOKEN_EXPIRY_MINUTES))
+    access_token_expiry = timedelta(minutes=int(settings.token_expiry_minutes))
     new_access_token = create_token({"sub": user_id}, access_token_expiry, "access")
 
     return Token(access_token=new_access_token, token_type="bearer")
