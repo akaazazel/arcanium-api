@@ -1,7 +1,6 @@
 from app.routes import auth, notes
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
 from app.core.exceptions import (
     http_exception,
     validation_exception,

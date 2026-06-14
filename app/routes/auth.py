@@ -67,6 +67,7 @@ async def login(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             headers={"WWW-Authenticate": "Bearer"},
+            detail="Incorrect email or password",
         )
 
     access_token_expiry = timedelta(minutes=int(settings.token_expiry_minutes))
@@ -91,7 +92,10 @@ async def refresh(refresh_token: Annotated[str | None, Cookie()]):
     user_id = verify_token(refresh_token, "refresh")
 
     if user_id is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        )
 
     access_token_expiry = timedelta(minutes=int(settings.token_expiry_minutes))
     new_access_token = create_token({"sub": user_id}, access_token_expiry, "access")
@@ -108,7 +112,7 @@ async def get_current_user(
     if user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Token",
+            detail="Invalid token",
         )
 
     try:
@@ -116,7 +120,7 @@ async def get_current_user(
     except (ValueError, TypeError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token type",
+            detail="Invalid token",
         )
 
     select_result = await db.execute(
@@ -128,7 +132,7 @@ async def get_current_user(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User don't exist",
+            detail="User does not exist",
         )
 
     return user
