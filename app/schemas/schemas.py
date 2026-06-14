@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
+from datetime import datetime
 
 # User Schemas
 
@@ -30,6 +31,7 @@ class NoteCreate(NoteBase):
 
 class NoteResponse(NoteBase):
     id: int
+    created_at: datetime
 
 
 # Token Schemas

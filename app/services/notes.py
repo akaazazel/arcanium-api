@@ -45,6 +45,7 @@ async def get_notes(
                 id=note.id,
                 title=decrypt(note.title),
                 content=decrypt(note.content),
+                created_at=note.created_at,
             )
         )
 
