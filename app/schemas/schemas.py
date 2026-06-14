@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
-
 from pydantic import BaseModel, EmailStr, Field
+
+# User Schemas
 
 
 class UserBase(BaseModel):
@@ -16,17 +16,23 @@ class UserResponse(UserBase):
     id: int
 
 
+# Note Schemas
+
+
 class NoteBase(BaseModel):
     title: str
     content: str
 
 
 class NoteCreate(NoteBase):
-    created_at: datetime = datetime.now(timezone.utc)
+    pass
 
 
 class NoteResponse(NoteBase):
-    note_id: int
+    id: int
+
+
+# Token Schemas
 
 
 class Token(BaseModel):

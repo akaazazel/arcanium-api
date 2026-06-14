@@ -23,7 +23,7 @@ load_dotenv()
 TOKEN_EXPIRY_MINUTES = os.getenv("TOKEN_EXPIRY_MINUTES") or "30"
 TOKEN_EXPIRY_DAYS = os.getenv("TOKEN_EXPIRY_DAYS") or "28"
 
-router = APIRouter(prefix="/auth")
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserResponse)

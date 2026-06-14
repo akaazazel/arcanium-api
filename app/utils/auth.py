@@ -12,6 +12,9 @@ TOKEN_EXPIRY_MINUTES = os.getenv("TOKEN_EXPIRY_MINUTES") or "30"
 ALGORITHM = os.getenv("ALGORITHM") or "HS256"
 SECRET_KEY = os.getenv("SECRET_KEY")
 
+if SECRET_KEY is None:
+    raise RuntimeError("SECRET_KEY env variable is missing!")
+
 password_hash = PasswordHash.recommended()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 

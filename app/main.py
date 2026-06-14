@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.routes import auth
+from app.routes import auth, notes
 
 app = FastAPI()
 
@@ -11,3 +11,4 @@ async def ping():
 
 
 app.router.include_router(auth.router)
+app.router.include_router(notes.router)
