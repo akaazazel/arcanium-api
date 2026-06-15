@@ -31,6 +31,10 @@ class Note(Base):
         DateTime(timezone=True),
         nullable=False,
     )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
     user: Mapped[User] = relationship("User", back_populates="notes")
 
 

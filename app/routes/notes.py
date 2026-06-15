@@ -45,6 +45,7 @@ async def get_note(
         title=decrypt(result.title),
         content=decrypt(result.content),
         created_at=result.created_at,
+        updated_at=result.updated_at,
     )
 
 
@@ -68,7 +69,7 @@ async def update_notes(
         user_id=user.id, note_id=note_id, note_data=note_data, db=db
     )
 
-    return GenericResponse(message="Note created")
+    return GenericResponse(message="Note updated")
 
 
 @router.delete("/notes/{note_id}", response_model=GenericResponse)

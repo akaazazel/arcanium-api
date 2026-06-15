@@ -46,6 +46,7 @@ async def get_notes(
                 title=decrypt(note.title),
                 content=decrypt(note.content),
                 created_at=note.created_at,
+                updated_at=note.updated_at,
             )
         )
 
@@ -57,11 +58,13 @@ async def create_note(
     user_id: int,
     db: AsyncSession,
 ) -> int:
+    cur_time = datetime.now(UTC)
     new_note = Note(
         title=encrypt(note_data.title),
         content=encrypt(note_data.content),
         owner=user_id,
-        created_at=datetime.now(UTC),
+        created_at=cur_time,
+        updated_at=cur_time,
     )
 
     db.add(new_note)
@@ -81,6 +84,7 @@ async def update_note(
 
     result.title = encrypt(note_data.title)
     result.content = encrypt(note_data.content)
+    result.updated_at = datetime.now(UTC)
 
     await db.commit()
     await db.refresh(result)
