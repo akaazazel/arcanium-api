@@ -33,8 +33,16 @@ async def get_note(
 async def get_notes(
     user_id: int,
     db: AsyncSession,
+    sort: str,
+    order: str,
 ) -> Sequence:
-    response = await db.execute(select(Note).where(Note.owner == user_id))
+
+    sort_stmt = Note.created_at if sort == "date_created" else Note.updated_at
+    order_stmt = sort_stmt.asc() if order == "asc" else sort_stmt.desc()
+
+    stmt = select(Note).where(Note.owner == user_id).order_by(order_stmt, Note.id)
+
+    response = await db.execute(stmt)
     notes = response.scalars().all()
 
     decrypted_notes: list[NoteResponse] = []

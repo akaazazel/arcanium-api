@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from app.database import get_db
 from app.routes.auth import get_current_user
@@ -53,9 +53,11 @@ async def get_note(
 async def get_notes(
     user: Annotated[UserResponse, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    sort: Literal["date_created", "date_updated"] = "date_created",
+    order: Literal["asc", "desc"] = "asc",
 ):
 
-    return await notes.get_notes(user.id, db)
+    return await notes.get_notes(user.id, db, sort, order)
 
 
 @router.put("/notes/{note_id}", response_model=GenericResponse)
