@@ -1,14 +1,21 @@
-from app.routes import auth, notes
-from fastapi import FastAPI, HTTPException
-from fastapi.exceptions import RequestValidationError
 from app.core.exceptions import (
     http_exception,
-    validation_exception,
     internal_server_exception,
+    validation_exception,
 )
+from app.routes import auth, notes
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.middleware import cors
+from fastapi.exceptions import RequestValidationError
 
 app = FastAPI()
-
+app.add_middleware(
+    cors.CORSMiddleware,
+    allow_origins=["https://hei.com"],  # configure of productions
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.router.include_router(auth.router)
 app.router.include_router(notes.router)
@@ -24,3 +31,15 @@ app.add_exception_handler(
 app.add_exception_handler(
     exc_class_or_status_code=Exception, handler=internal_server_exception
 )
+
+
+@app.middleware("http")
+async def api_middlelware(request: Request, call_next):
+    response: Response = await call_next(request)
+
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    # Uncomment on production
+    # response.headers["Strict-Transport-Security"] = "max-age=3153600; includeSubDomains"
+
+    return response
