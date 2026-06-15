@@ -1,17 +1,18 @@
+from datetime import datetime
 from typing import Annotated, Literal
 
 from app.database import get_db
 from app.routes.auth import get_current_user
 from app.schemas.schemas import (
+    CreatedResponse,
+    GenericResponse,
     NoteCreate,
     NoteResponse,
     UserResponse,
-    CreatedResponse,
-    GenericResponse,
 )
 from app.services import notes
 from app.utils.notes import decrypt
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(tags=["notes"])
@@ -55,9 +56,20 @@ async def get_notes(
     db: Annotated[AsyncSession, Depends(get_db)],
     sort: Literal["date_created", "date_updated"] = "date_created",
     order: Literal["asc", "desc"] = "asc",
+    limit: int = Query(gt=0, lt=101, default=100),
+    offset_id: int | None = None,
+    offset_date: datetime | None = None,
 ):
 
-    return await notes.get_notes(user.id, db, sort, order)
+    return await notes.get_notes(
+        user.id,
+        db,
+        sort,
+        order,
+        limit,
+        offset_id,
+        offset_date,
+    )
 
 
 @router.put("/notes/{note_id}", response_model=GenericResponse)
