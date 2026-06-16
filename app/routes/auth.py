@@ -3,7 +3,7 @@ from typing import Annotated
 from app.database import get_db
 from app.models import models
 from app.schemas.schemas import GenericResponse, Token, UserCreate, UserResponse
-from app.services.auth import generate_tokens, logout_user
+from app.services.auth import generate_tokens, is_token_revoked, logout_user
 from app.utils.auth import hash_password, oauth2_scheme, verify_password, verify_token
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -99,8 +99,11 @@ async def refresh(
         )
 
     try:
+        if await is_token_revoked(refresh_token):
+            raise InvalidTokenError
+
         user_id = verify_token(refresh_token, "refresh")
-    except InvalidTokenError as e:
+    except InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token",

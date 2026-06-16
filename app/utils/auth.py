@@ -37,7 +37,7 @@ def create_token(data: dict[str, Any], expire_delta: timedelta, token_type: str)
         expire = datetime.now(UTC) + expire_delta
     else:
         expire = datetime.now(UTC) + timedelta(
-            minutes=int(settings.token_expiry_minutes)
+            minutes=int(settings.token_expiry_days),
         )
 
     to_encode.update(
@@ -69,6 +69,7 @@ def decode_token(token: str, token_type: str) -> dict[str, str]:
     else:
         options = ["exp", "sub", "type", "jti"]
 
+    # Raises InvalidTokenError
     return jwt.decode(
         jwt=token,
         key=settings.secret_key,
@@ -84,12 +85,3 @@ def verify_token(token: str, token_type: str) -> str:
         raise InvalidTokenError("Invalid token type!")
 
     return decoded_jwt["sub"]
-
-
-def get_jti_from_token(token: str, token_type: str = "refresh") -> str:
-    decoded_jwt = decode_token(token, token_type)
-
-    if not (token_type == decoded_jwt.get("type")):
-        raise InvalidTokenError("Invalid token type!")
-
-    return decoded_jwt["jti"]
