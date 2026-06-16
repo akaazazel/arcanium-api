@@ -88,7 +88,10 @@ async def login(
 
 
 @router.get("/refresh", response_model=Token)
-async def refresh(refresh_token: Annotated[str | None, Cookie()]):
+async def refresh(
+    refresh_token: Annotated[str | None, Cookie()],
+    response: Response,
+):
     user_id = verify_token(refresh_token, "refresh")
 
     if user_id is None:
@@ -99,6 +102,17 @@ async def refresh(refresh_token: Annotated[str | None, Cookie()]):
 
     access_token_expiry = timedelta(minutes=int(settings.token_expiry_minutes))
     new_access_token = create_token({"sub": user_id}, access_token_expiry, "access")
+
+    refresh_token_expiry = timedelta(minutes=int(settings.token_expiry_days))
+    refresh_token = create_token({"sub": str(user_id)}, refresh_token_expiry, "refresh")
+
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        expires=str(refresh_token_expiry),
+        httponly=True,
+        secure=True,
+    )
 
     return Token(access_token=new_access_token, token_type="bearer")
 

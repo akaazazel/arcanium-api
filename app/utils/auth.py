@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from uuid import uuid4
 
 import jwt
 from app.core.settings import settings
@@ -32,6 +33,7 @@ def create_token(data: dict[str, Any], expire_delta: timedelta, token_type: str)
         {
             "exp": expire,
             "type": token_type,
+            "jti": str(uuid4()) if token_type == "refresh" else None,
         }
     )
 
