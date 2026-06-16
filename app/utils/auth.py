@@ -5,6 +5,7 @@ from uuid import uuid4
 import jwt
 from app.core.settings import settings
 from fastapi.security import OAuth2PasswordBearer
+from jwt.exceptions import InvalidTokenError
 from pwdlib import PasswordHash
 
 password_hash = PasswordHash.recommended()
@@ -62,34 +63,16 @@ def create_token(data: dict[str, Any], expire_delta: timedelta, token_type: str)
     return encoded_jwt
 
 
-def verify_token(token: str | None, token_type: str) -> str | None:
-    """Verifies the JWT Token string and returns the sub (user_id) from the token
+def verify_token(token: str, token_type: str) -> str:
 
-    Args:
-        token (str | None): JWT Token string
-        token_type (str): JWT Token type (refresh / access)
+    decoded_jwt = jwt.decode(
+        jwt=token,
+        key=settings.secret_key,
+        algorithms=settings.algorithm,
+        options={"require": ["exp", "sub", "type"]},
+    )
 
-    Raises:
-        jwt.InvalidTokenError: If token doesn't contains required fields or if token is different type than specified
+    if not (token_type == decoded_jwt.get("type")):
+        raise InvalidTokenError("Invalid token type!")
 
-    Returns:
-        str | None: Returns sub (user_id) if token is valid. Else returns None
-    """
-    if token is None:
-        return None
-
-    try:
-        decoded_jwt = jwt.decode(
-            jwt=token,
-            key=settings.secret_key,
-            algorithms=settings.algorithm,
-            options={"require": ["exp", "sub", "type"]},
-        )
-
-        if not (token_type == decoded_jwt.get("type")):
-            raise jwt.InvalidTokenError("Invalid token type!")
-
-    except jwt.InvalidTokenError:
-        return None
-    else:
-        return decoded_jwt.get("sub")
+    return decoded_jwt["sub"]

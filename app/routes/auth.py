@@ -66,17 +66,26 @@ async def login(
     return await generate_tokens(user_id=str(user.id), response=response)
 
 
-@router.get("/refresh", response_model=Token)
-async def refresh(
-    refresh_token: Annotated[str | None, Cookie()],
-    response: Response,
-):
-    user_id = verify_token(refresh_token, "refresh")
+from jwt.exceptions import InvalidTokenError
 
-    if user_id is None:
+
+@router.post("/refresh", response_model=Token)
+async def refresh(
+    response: Response,
+    refresh_token: Annotated[str | None, Cookie()] = None,
+):
+    if refresh_token is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
+            detail="Refresh token not provided",
+        )
+
+    try:
+        user_id = verify_token(refresh_token, "refresh")
+    except InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
         )
 
     return await generate_tokens(user_id=str(user_id), response=response)
@@ -84,22 +93,24 @@ async def refresh(
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    token: Annotated[str | None, Depends(oauth2_scheme)] = None,
 ):
-    user_id = verify_token(token, "access")
-    if user_id is None:
+
+    if token is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
+            detail="Access token not provided",
         )
+
+    user_id = verify_token(token, "access")
 
     try:
         user_id_int = int(user_id)
     except (ValueError, TypeError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
+            detail="Invalid access token",
         )
 
     select_result = await db.execute(

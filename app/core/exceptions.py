@@ -3,7 +3,6 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 
-
 async def http_exception(request: Request, exec: HTTPException):
     return JSONResponse(
         status_code=exec.status_code,
