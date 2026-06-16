@@ -1,17 +1,10 @@
-from datetime import timedelta
 from typing import Annotated
 
 from app.database import get_db
 from app.models import models
 from app.schemas.schemas import Token, UserCreate, UserResponse
-from app.core.settings import settings
-from app.utils.auth import (
-    create_token,
-    hash_password,
-    oauth2_scheme,
-    verify_password,
-    verify_token,
-)
+from app.services.auth import generate_tokens
+from app.utils.auth import hash_password, oauth2_scheme, verify_password, verify_token
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import func, select
@@ -70,21 +63,7 @@ async def login(
             detail="Incorrect email or password",
         )
 
-    access_token_expiry = timedelta(minutes=int(settings.token_expiry_minutes))
-    access_token = create_token({"sub": str(user.id)}, access_token_expiry, "access")
-
-    refresh_token_expiry = timedelta(minutes=int(settings.token_expiry_days))
-    refresh_token = create_token({"sub": str(user.id)}, refresh_token_expiry, "refresh")
-
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        expires=str(refresh_token_expiry),
-        httponly=True,
-        secure=True,
-    )
-
-    return Token(access_token=access_token, token_type="bearer")
+    return await generate_tokens(user_id=str(user.id), response=response)
 
 
 @router.get("/refresh", response_model=Token)
@@ -100,21 +79,7 @@ async def refresh(
             detail="Invalid token",
         )
 
-    access_token_expiry = timedelta(minutes=int(settings.token_expiry_minutes))
-    new_access_token = create_token({"sub": user_id}, access_token_expiry, "access")
-
-    refresh_token_expiry = timedelta(minutes=int(settings.token_expiry_days))
-    refresh_token = create_token({"sub": str(user_id)}, refresh_token_expiry, "refresh")
-
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        expires=str(refresh_token_expiry),
-        httponly=True,
-        secure=True,
-    )
-
-    return Token(access_token=new_access_token, token_type="bearer")
+    return await generate_tokens(user_id=str(user_id), response=response)
 
 
 @router.get("/me", response_model=UserResponse)

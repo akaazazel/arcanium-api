@@ -20,6 +20,16 @@ def verify_password(plain_password: str, hash_password: str) -> bool:
 
 
 def create_token(data: dict[str, Any], expire_delta: timedelta, token_type: str) -> str:
+    """Generates a JWT Token
+
+    Args:
+        data (dict[str, Any]): Base payload data. Usually contains { sub: user_id }
+        expire_delta (timedelta): expiration of the token
+        token_type (str): token type (refresh / access)
+
+    Returns:
+        str: JWT Token string
+    """
     to_encode = data.copy()
 
     if expire_delta:
@@ -47,6 +57,18 @@ def create_token(data: dict[str, Any], expire_delta: timedelta, token_type: str)
 
 
 def verify_token(token: str | None, token_type: str) -> str | None:
+    """Verifies the JWT Token string and returns the sub (user_id) from the token
+
+    Args:
+        token (str | None): JWT Token string
+        token_type (str): JWT Token type (refresh / access)
+
+    Raises:
+        jwt.InvalidTokenError: If token doesn't contains required fields or if token is different type than specified
+
+    Returns:
+        str | None: Returns sub (user_id) if token is valid. Else returns None
+    """
     if token is None:
         return None
 
