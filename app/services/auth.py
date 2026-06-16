@@ -1,8 +1,9 @@
 from datetime import timedelta
+
 from app.core.settings import settings
-from app.utils.auth import create_token
-from fastapi import Response
 from app.schemas.schemas import Token
+from app.utils.auth import create_token, get_jti_from_token
+from fastapi import Response
 
 
 async def generate_tokens(user_id: str, response: Response) -> Token:
@@ -32,3 +33,9 @@ async def generate_tokens(user_id: str, response: Response) -> Token:
     )
 
     return Token(access_token=access_token, token_type="bearer")
+
+
+async def logout_user(refresh_token: str) -> None:
+    jti = get_jti_from_token(refresh_token)
+
+    print(jti)

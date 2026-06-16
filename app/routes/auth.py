@@ -2,11 +2,12 @@ from typing import Annotated
 
 from app.database import get_db
 from app.models import models
-from app.schemas.schemas import Token, UserCreate, UserResponse
-from app.services.auth import generate_tokens
+from app.schemas.schemas import GenericResponse, Token, UserCreate, UserResponse
+from app.services.auth import generate_tokens, logout_user
 from app.utils.auth import hash_password, oauth2_scheme, verify_password, verify_token
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
+from jwt.exceptions import InvalidTokenError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -66,7 +67,24 @@ async def login(
     return await generate_tokens(user_id=str(user.id), response=response)
 
 
-from jwt.exceptions import InvalidTokenError
+@router.post("/logout")
+async def logout(refresh_token: Annotated[str | None, Cookie()] = None):
+    if refresh_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token not provided",
+        )
+
+    try:
+        await logout_user(refresh_token)
+
+    except InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+
+    return GenericResponse(message="User logged out")
 
 
 @router.post("/refresh", response_model=Token)

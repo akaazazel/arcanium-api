@@ -63,16 +63,33 @@ def create_token(data: dict[str, Any], expire_delta: timedelta, token_type: str)
     return encoded_jwt
 
 
-def verify_token(token: str, token_type: str) -> str:
+def decode_token(token: str, token_type: str) -> dict[str, str]:
+    if token_type == "access":
+        options = ["exp", "sub", "type"]
+    else:
+        options = ["exp", "sub", "type", "jti"]
 
-    decoded_jwt = jwt.decode(
+    return jwt.decode(
         jwt=token,
         key=settings.secret_key,
         algorithms=settings.algorithm,
-        options={"require": ["exp", "sub", "type"]},
+        options={"require": options},
     )
+
+
+def verify_token(token: str, token_type: str) -> str:
+    decoded_jwt = decode_token(token, token_type)
 
     if not (token_type == decoded_jwt.get("type")):
         raise InvalidTokenError("Invalid token type!")
 
     return decoded_jwt["sub"]
+
+
+def get_jti_from_token(token: str, token_type: str = "refresh") -> str:
+    decoded_jwt = decode_token(token, token_type)
+
+    if not (token_type == decoded_jwt.get("type")):
+        raise InvalidTokenError("Invalid token type!")
+
+    return decoded_jwt["jti"]
