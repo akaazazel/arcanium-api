@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     postgres_db: str
     postgres_db_url: str
 
+    redis_host: str
+    redis_port: int
+
     secret_key: str
     encryption_key: str
     algorithm: str
