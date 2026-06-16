@@ -82,7 +82,7 @@ async def refresh(
 
     try:
         user_id = verify_token(refresh_token, "refresh")
-    except InvalidTokenError:
+    except InvalidTokenError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token",

@@ -4,9 +4,9 @@ from typing import Sequence
 from app.models.models import Note
 from app.schemas.schemas import NoteCreate, NoteResponse
 from app.utils.notes import decrypt, encrypt
-from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.exceptions import NoteNotFoundError
 
 
 async def get_note(
@@ -23,10 +23,7 @@ async def get_note(
     note = result.scalars().first()
 
     if note is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="The note is not found!",
-        )
+        raise NoteNotFoundError
 
     return note
 

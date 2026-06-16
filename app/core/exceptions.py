@@ -32,3 +32,8 @@ async def internal_server_exception(request: Request, exec: Exception):
             "message": "Internal server error",
         },
     )
+
+
+class NoteNotFoundError(Exception):
+    def __init__(self, message: str = "Note not found") -> None:
+        super().__init__(message)
