@@ -69,7 +69,7 @@ async def login(
             detail="Incorrect email or password",
         )
 
-    return await generate_tokens(user_id=str(user.id), response=response)
+    return generate_tokens(user_id=str(user.id), response=response)
 
 
 @router.post("/logout")
@@ -120,7 +120,7 @@ async def refresh(
             detail="Invalid refresh token",
         )
 
-    return await generate_tokens(user_id=str(user_id), response=response)
+    return generate_tokens(user_id=str(user_id), response=response)
 
 
 @router.get("/me", response_model=UserResponse)

@@ -7,7 +7,7 @@ from app.utils.auth import create_token, decode_token
 from fastapi import Response
 
 
-async def generate_tokens(user_id: str, response: Response) -> Token:
+def generate_tokens(user_id: str, response: Response) -> Token:
     """Generates access token and refresh tokens.\n
     Puts refresh token into the response cookie and returns the access token
 
