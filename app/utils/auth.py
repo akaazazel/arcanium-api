@@ -47,7 +47,7 @@ def create_token(data: dict[str, Any], expire_delta: timedelta, token_type: str)
         }
     )
 
-    if token_type is "refresh":
+    if token_type == "refresh":
         to_encode.update(
             {
                 "jti": str(uuid4()),
