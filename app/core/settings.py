@@ -8,11 +8,11 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
     )
 
+    postgres_host: str = "postgres"
+    postgres_port: int = 5432
     postgres_password: str
     postgres_db: str = "arcanium_db"
-    postgres_db_url: str
 
-    # redis_url: str
     redis_host: str = "redis"
     redis_port: int = 6379
     redis_password: str
@@ -24,6 +24,14 @@ class Settings(BaseSettings):
     algorithm: str
     token_expiry_minutes: int = 5
     token_expiry_days: int = 30
+
+    @property
+    def postgres_url(self) -> str:
+        return f"postgresql+psycopg://{self.postgres_host}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+
+    @property
+    def redis_url(self) -> str:
+        return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/"
 
 
 @lru_cache

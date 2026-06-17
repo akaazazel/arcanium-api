@@ -4,6 +4,6 @@ from slowapi.util import get_remote_address
 
 limiter = Limiter(
     key_func=get_remote_address,
-    storage_uri=f"redis://:{settings.redis_password}@{settings.redis_host}:{settings.redis_port}/{settings.redis_limiter_db}",
+    storage_uri=f"{settings.redis_url}{settings.redis_limiter_db}",
     default_limits=["60/minute"],
 )

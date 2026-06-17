@@ -5,7 +5,7 @@ from sqlalchemy.orm import DeclarativeBase
 
 # PostgreSQL
 
-engine = create_async_engine(settings.postgres_db_url)
+engine = create_async_engine(settings.postgres_url)
 SessionLocal = async_sessionmaker(bind=engine)
 
 
