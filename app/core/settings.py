@@ -9,17 +9,18 @@ class Settings(BaseSettings):
     )
 
     postgres_password: str
-    postgres_db: str
+    postgres_db: str = "arcanium_db"
     postgres_db_url: str
 
-    redis_host: str
-    redis_port: int
+    # redis_url: str
+    redis_host: str = "redis"
+    redis_port: int = 6379
 
     secret_key: str
     encryption_key: str
     algorithm: str
-    token_expiry_minutes: int
-    token_expiry_days: int
+    token_expiry_minutes: int = 5
+    token_expiry_days: int = 30
 
 
 @lru_cache

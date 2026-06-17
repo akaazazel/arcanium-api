@@ -1,11 +1,12 @@
 from typing import Annotated
 
+from app.core.rate_limit import limiter
 from app.database import get_db
 from app.models import models
 from app.schemas.schemas import GenericResponse, Token, UserCreate, UserResponse
 from app.services.auth import generate_tokens, is_token_revoked, logout_user
 from app.utils.auth import hash_password, oauth2_scheme, verify_password, verify_token
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 from sqlalchemy import func, select
@@ -15,9 +16,11 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserResponse)
+@limiter.limit("5/minute")
 async def register_user(
     user_data: UserCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    request: Request,
 ):
     select_response = await db.execute(
         select(models.User.email).where(
@@ -44,9 +47,11 @@ async def register_user(
 
 
 @router.post("/login", response_model=Token)
+@limiter.limit("5/minute")
 async def login(
     user_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Annotated[AsyncSession, Depends(get_db)],
+    request: Request,
     response: Response,
 ):
     select_response = await db.execute(
@@ -68,7 +73,11 @@ async def login(
 
 
 @router.post("/logout")
-async def logout(refresh_token: Annotated[str | None, Cookie()] = None):
+@limiter.limit("5/minute")
+async def logout(
+    request: Request,
+    refresh_token: Annotated[str | None, Cookie()] = None,
+):
     if refresh_token is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -88,7 +97,9 @@ async def logout(refresh_token: Annotated[str | None, Cookie()] = None):
 
 
 @router.post("/refresh", response_model=Token)
+@limiter.limit("5/minute")
 async def refresh(
+    request: Request,
     response: Response,
     refresh_token: Annotated[str | None, Cookie()] = None,
 ):

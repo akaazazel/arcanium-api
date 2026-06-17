@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
+from app.core.exceptions import NoteNotFoundError
 from app.database import get_db
 from app.routes.auth import get_current_user
 from app.schemas.schemas import (
@@ -12,9 +13,8 @@ from app.schemas.schemas import (
 )
 from app.services import notes
 from app.utils.notes import decrypt
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.exceptions import NoteNotFoundError
 
 router = APIRouter(tags=["notes"])
 
