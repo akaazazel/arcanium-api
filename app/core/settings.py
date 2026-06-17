@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     # redis_url: str
     redis_host: str = "redis"
     redis_port: int = 6379
+    redis_password: str
+    redis_token_db: int = 0
+    redis_limiter_db: int = 1
 
     secret_key: str
     encryption_key: str
