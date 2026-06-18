@@ -1,13 +1,8 @@
 import random
-from datetime import UTC, datetime, timedelta
-from typing import Any
 
 import pytest
-import pytest_asyncio
 from app.core.exceptions import NoteNotFoundError
-from app.database import Base
 from app.models.models import *
-from app.schemas.schemas import NoteCreate, UserCreate
 from app.services.notes import (
     create_note,
     delete_note,
@@ -15,130 +10,22 @@ from app.services.notes import (
     get_notes,
     update_note,
 )
-from app.utils.auth import hash_password
-from app.utils.notes import decrypt, encrypt
-from sqlalchemy import select, text
+from app.utils.notes import decrypt
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy_utils import create_database, database_exists
-
-postgre_url = "postgresql+psycopg://postgres:unsettled@postgres:5432/arcanium_test_db"
-engine = create_async_engine(postgre_url)
-Session = async_sessionmaker(bind=engine, expire_on_commit=False)
-
-
-# fixtures
-
-
-@pytest_asyncio.fixture(scope="session")
-async def init_db():
-    if not database_exists(postgre_url):
-        create_database(postgre_url)
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    yield
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-
-    await engine.dispose()
-
-
-@pytest_asyncio.fixture
-async def db(init_db):
-    async with Session() as session:
-        yield session
-
-    await session.execute(
-        text('TRUNCATE TABLE "note", "user" RESTART IDENTITY CASCADE')
-    )
-    await session.commit()
-
-
-@pytest_asyncio.fixture
-async def insert_user_and_note_factory():
-    async def insert_user_and_note(
-        user_id: int, note_id: int, db: AsyncSession
-    ) -> tuple[User, Note]:
-        user = get_user_model(user_factory(), user_id)
-        note = get_note_model(note_factory(), user_id, True, note_id)
-        await add_to_db(db=db, data=[user, note])
-
-        return (user, note)
-
-    return insert_user_and_note
-
-
-def user_factory(name: str = "user0") -> UserCreate:
-    return UserCreate(
-        name=name,
-        email=f"{name}@gmail.com",
-        password=f"{name}_password",
-    )
-
-
-def note_factory(note_no: int = 1, no_content: bool = False) -> NoteCreate:
-    content = f"Note {note_no} content" if no_content == False else ""
-
-    return NoteCreate(
-        title=f"Note {note_no} title.",
-        content=content,
-    )
-
-
-def get_note_model(
-    note_schema: NoteCreate,
-    owner: int,
-    is_encrypt: bool = False,
-    id: int | None = None,
-    time_delta_day: int | None = None,
-) -> Note:
-    date_time = datetime.now(UTC)
-
-    if time_delta_day is not None:
-        date_time = date_time + timedelta(days=time_delta_day)
-
-    if is_encrypt is True:
-        note_schema.title = encrypt(note_schema.title)
-        note_schema.content = encrypt(note_schema.content)
-
-    new_note = Note(
-        title=note_schema.title,
-        content=note_schema.content,
-        owner=owner,
-        created_at=date_time,
-        updated_at=date_time,
-    )
-
-    if id is not None:
-        new_note.id = id
-
-    return new_note
-
-
-def get_user_model(user_schema: UserCreate, id: int | None = None) -> User:
-    user = User(
-        name=user_schema.name,
-        email=user_schema.email,
-        password_hash=hash_password(user_schema.password),
-    )
-
-    if id is not None:
-        user.id = id
-
-    return user
-
-
-async def add_to_db(db: AsyncSession, data: list[Any]) -> None:
-    for models in data:
-        db.add(models)
-
-    await db.commit()
-
-    for models in data:
-        await db.refresh(models)
+from sqlalchemy.ext.asyncio import AsyncSession
+from tests.test_services.test_services_notes.fixtures import (
+    db,
+    init_db,
+    insert_user_and_note_factory,
+)
+from tests.test_services.test_services_notes.utils import (
+    add_to_db,
+    get_note_model,
+    get_user_model,
+    note_factory,
+    user_factory,
+)
 
 
 @pytest.mark.asyncio
