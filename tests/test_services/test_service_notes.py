@@ -1,15 +1,21 @@
+import random
 import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-import random
 import pytest
 import pytest_asyncio
 from app.core.exceptions import NoteNotFoundError
 from app.database import Base
 from app.models.models import *
 from app.schemas.schemas import NoteCreate, UserCreate
-from app.services.notes import create_note, get_note, get_notes
+from app.services.notes import (
+    create_note,
+    delete_note,
+    get_note,
+    get_notes,
+    update_note,
+)
 from app.utils.auth import hash_password
 from app.utils.notes import decrypt, encrypt
 from sqlalchemy import select, text
@@ -255,3 +261,54 @@ async def test_get_multiple_notes(db: AsyncSession, sort, order):
             index += 1
         else:
             index -= 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("order", ["asc", "desc"])
+async def test_get_notes_pagination(db: AsyncSession, order):
+
+    user_id = 1
+    user = get_user_model(user_factory(), user_id)
+
+    note_id_start = 1
+    note_id_end = 10
+    total_notes = note_id_end + 1 - note_id_start
+
+    notes_list = [
+        get_note_model(
+            note_factory(), owner=user_id, is_encrypt=True, id=i, time_delta_day=i
+        )
+        for i in range(note_id_start, note_id_end + 1)
+    ]
+
+    await add_to_db(db, [user])
+    await add_to_db(db, notes_list)
+
+    offset_date = None
+    offset_id = None
+    limit = 2
+    fetched_notes = []
+    for _ in range(note_id_start, int(total_notes / 2) + 1):
+
+        result = await get_notes(
+            user_id=user_id,
+            db=db,
+            sort="date_created",
+            order=order,
+            limit=limit,
+            offset_date=offset_date,
+            offset_id=offset_id,
+        )
+
+        fetched_notes.extend(result)
+
+        offset_date = result[limit - 1].created_at
+        offset_id = result[limit - 1].id
+
+    assert len(fetched_notes) == total_notes
+
+    index = 0
+    notes_list.reverse() if order == "desc" else notes_list
+    for fetched_note in fetched_notes:
+        assert fetched_note.id == notes_list[index].id
+        index += 1
