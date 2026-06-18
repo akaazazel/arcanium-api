@@ -1,9 +1,8 @@
-from datetime import timedelta, datetime, UTC
+from datetime import timedelta
 
 import pytest
 from app.utils.auth import (
     create_token,
-    decode_token,
     hash_password,
     verify_password,
     verify_token,

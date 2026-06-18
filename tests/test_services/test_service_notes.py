@@ -1,5 +1,4 @@
 import random
-import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -56,6 +55,20 @@ async def db(init_db):
         text('TRUNCATE TABLE "note", "user" RESTART IDENTITY CASCADE')
     )
     await session.commit()
+
+
+@pytest_asyncio.fixture
+async def insert_user_and_note_factory():
+    async def insert_user_and_note(
+        user_id: int, note_id: int, db: AsyncSession
+    ) -> tuple[User, Note]:
+        user = get_user_model(user_factory(), user_id)
+        note = get_note_model(note_factory(), user_id, True, note_id)
+        await add_to_db(db=db, data=[user, note])
+
+        return (user, note)
+
+    return insert_user_and_note
 
 
 def user_factory(name: str = "user0") -> UserCreate:
@@ -163,13 +176,12 @@ async def test_create_notes_no_user(db: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_get_note(db: AsyncSession):
+async def test_get_note(db: AsyncSession, insert_user_and_note_factory):
     user_id = 1
-    user = get_user_model(user_factory(), user_id)
+    note_id = 1
 
-    note = get_note_model(note_factory(), user_id, is_encrypt=True)
-
-    await add_to_db(db=db, data=[user, note])
+    result = await insert_user_and_note_factory(user_id=user_id, note_id=note_id, db=db)
+    note = result[1]
 
     fetched_note = await get_note(note_id=note.id, user_id=user_id, db=db)
 
@@ -189,16 +201,12 @@ async def test_get_note_not_exists(db: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_get_forbidden_note(db: AsyncSession):
+async def test_get_forbidden_note(db: AsyncSession, insert_user_and_note_factory):
     user_id_1 = 1
     user_id_2 = 2
     note_id = 1
 
-    user1 = get_user_model(user_factory("user1"), user_id_1)
-
-    note1 = get_note_model(note_factory(), note_id)
-
-    await add_to_db(db=db, data=[user1, note1])  # add user1 and note1
+    await insert_user_and_note_factory(user_id=user_id_1, note_id=note_id, db=db)
 
     fetched_note = await get_note(
         note_id=note_id, user_id=user_id_1, db=db
@@ -312,3 +320,36 @@ async def test_get_notes_pagination(db: AsyncSession, order):
     for fetched_note in fetched_notes:
         assert fetched_note.id == notes_list[index].id
         index += 1
+
+
+@pytest.mark.asyncio
+async def test_update_notes(db: AsyncSession, insert_user_and_note_factory):
+    user_id = 1
+    note_id = 1
+    response = await insert_user_and_note_factory(user_id, note_id, db)
+
+    new_note_data = note_factory(2)
+    await update_note(user_id=user_id, note_id=note_id, note_data=new_note_data, db=db)
+
+    result = await db.execute(select(Note).where(Note.id == note_id))
+    fetched_note = result.scalar_one_or_none()
+
+    assert fetched_note is not None
+    assert fetched_note.id == note_id
+    assert decrypt(fetched_note.title) == new_note_data.title
+    assert decrypt(fetched_note.content) == new_note_data.content
+    assert fetched_note.created_at < fetched_note.updated_at
+
+
+@pytest.mark.asyncio
+async def test_delete_note(db: AsyncSession, insert_user_and_note_factory):
+    user_id = 1
+    note_id = 1
+    response = await insert_user_and_note_factory(user_id, note_id, db)
+
+    await delete_note(note_id=note_id, user_id=user_id, db=db)
+
+    result = await db.execute(select(Note).where(Note.id == note_id))
+    fetched_note = result.scalar_one_or_none()
+
+    assert fetched_note is None
