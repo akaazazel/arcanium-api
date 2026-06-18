@@ -1,13 +1,17 @@
+import time
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+import random
 import pytest
-from typing import Callable, Any
 import pytest_asyncio
-from datetime import datetime, UTC
+from app.core.exceptions import NoteNotFoundError
 from app.database import Base
 from app.models.models import *
 from app.schemas.schemas import NoteCreate, UserCreate
-from app.services.notes import create_note, get_note
+from app.services.notes import create_note, get_note, get_notes
 from app.utils.auth import hash_password
-from app.utils.notes import decrypt
+from app.utils.notes import decrypt, encrypt
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -37,7 +41,7 @@ async def init_db():
     await engine.dispose()
 
 
-@pytest_asyncio.fixture  # creates tables and yields a db session, lastly drops tables
+@pytest_asyncio.fixture
 async def db(init_db):
     async with Session() as session:
         yield session
@@ -65,25 +69,49 @@ def note_factory(note_no: int = 1, no_content: bool = False) -> NoteCreate:
     )
 
 
-def get_note_model(note_schema: NoteCreate, owner: int) -> Note:
-    return Note(
+def get_note_model(
+    note_schema: NoteCreate,
+    owner: int,
+    is_encrypt: bool = False,
+    id: int | None = None,
+    time_delta_day: int | None = None,
+) -> Note:
+    date_time = datetime.now(UTC)
+
+    if time_delta_day is not None:
+        date_time = date_time + timedelta(days=time_delta_day)
+
+    if is_encrypt is True:
+        note_schema.title = encrypt(note_schema.title)
+        note_schema.content = encrypt(note_schema.content)
+
+    new_note = Note(
         title=note_schema.title,
         content=note_schema.content,
         owner=owner,
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
+        created_at=date_time,
+        updated_at=date_time,
     )
 
+    if id is not None:
+        new_note.id = id
 
-def get_user_model(user_schema: UserCreate) -> User:
-    return User(
+    return new_note
+
+
+def get_user_model(user_schema: UserCreate, id: int | None = None) -> User:
+    user = User(
         name=user_schema.name,
         email=user_schema.email,
         password_hash=hash_password(user_schema.password),
     )
 
+    if id is not None:
+        user.id = id
 
-@pytest.mark.asyncio
+    return user
+
+
 async def add_to_db(db: AsyncSession, data: list[Any]) -> None:
     for models in data:
         db.add(models)
@@ -119,8 +147,111 @@ async def test_create_notes(db: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_create_notes_no_user(db):
+async def test_create_notes_no_user(db: AsyncSession):
     note = note_factory(1)
 
     with pytest.raises(IntegrityError):
         await create_note(note_data=note, user_id=1, db=db)
+
+    await db.rollback()
+
+
+@pytest.mark.asyncio
+async def test_get_note(db: AsyncSession):
+    user_id = 1
+    user = get_user_model(user_factory(), user_id)
+
+    note = get_note_model(note_factory(), user_id, is_encrypt=True)
+
+    await add_to_db(db=db, data=[user, note])
+
+    fetched_note = await get_note(note_id=note.id, user_id=user_id, db=db)
+
+    assert fetched_note is not None
+    assert fetched_note.id == note.id
+    assert decrypt(fetched_note.title) == decrypt(note.title)
+    assert decrypt(fetched_note.content) == decrypt(note.content)
+    assert fetched_note.owner == user_id
+    assert fetched_note.created_at == fetched_note.updated_at
+
+
+@pytest.mark.asyncio
+async def test_get_note_not_exists(db: AsyncSession):
+
+    with pytest.raises(NoteNotFoundError):
+        await get_note(note_id=1, user_id=1, db=db)
+
+
+@pytest.mark.asyncio
+async def test_get_forbidden_note(db: AsyncSession):
+    user_id_1 = 1
+    user_id_2 = 2
+    note_id = 1
+
+    user1 = get_user_model(user_factory("user1"), user_id_1)
+
+    note1 = get_note_model(note_factory(), note_id)
+
+    await add_to_db(db=db, data=[user1, note1])  # add user1 and note1
+
+    fetched_note = await get_note(
+        note_id=note_id, user_id=user_id_1, db=db
+    )  # fetch note by original user
+
+    assert fetched_note.id == note_id
+    assert fetched_note.owner == user_id_1
+
+    # if we access a note of different user
+    with pytest.raises(NoteNotFoundError):
+        await get_note(note_id=note_id, user_id=user_id_2, db=db)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("sort", ["date_created", "date_updated"])
+@pytest.mark.parametrize("order", ["asc", "desc"])
+async def test_get_multiple_notes(db: AsyncSession, sort, order):
+    user_id_1 = 1
+    user1 = get_user_model(user_factory(), user_id_1)
+    note_id_start = 1
+    note_id_end = 5
+
+    notes = []
+
+    for i in range(note_id_start, note_id_end + 1):
+        notes.append(get_note_model(note_factory(i), user_id_1, True, i, i))
+
+    randomized_notes = notes.copy()
+    random.shuffle(randomized_notes)
+
+    await add_to_db(db=db, data=[user1])  # add user
+    await add_to_db(db=db, data=randomized_notes)  # add notes
+
+    fetched_notes = await get_notes(
+        user_id=user_id_1,
+        db=db,
+        sort=sort,
+        order=order,
+        limit=10,
+        offset_id=None,
+        offset_date=None,
+    )
+
+    assert fetched_notes is not None
+
+    is_asc = True if order == "asc" else False
+    is_created_at = True if sort == "date_created" else False
+
+    index = note_id_start - 1 if is_asc else note_id_end - 1
+    for fetched_note in fetched_notes:
+        assert (
+            (fetched_note.created_at == notes[index].created_at)
+            if is_created_at
+            else (fetched_note.updated_at == notes[index].updated_at)
+        )
+
+        assert fetched_note.id == notes[index].id
+
+        if is_asc:
+            index += 1
+        else:
+            index -= 1
