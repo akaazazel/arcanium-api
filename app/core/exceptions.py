@@ -3,7 +3,6 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 
-
 async def http_exception(request: Request, exec: HTTPException):
     return JSONResponse(
         status_code=exec.status_code,
@@ -33,3 +32,23 @@ async def internal_server_exception(request: Request, exec: Exception):
             "message": "Internal server error",
         },
     )
+
+
+class NoteNotFoundError(Exception):
+    def __init__(self, message: str = "Note not found") -> None:
+        super().__init__(message)
+
+
+class UnauthorizedError(Exception):
+    def __init__(self, message: str = "No authorization") -> None:
+        super().__init__(message)
+
+
+class DuplicateUserError(Exception):
+    def __init__(self, message: str = "User already exists") -> None:
+        super().__init__(message)
+
+
+class InvalidUserError(Exception):
+    def __init__(self, message: str = "User does not exist") -> None:
+        super().__init__(message)

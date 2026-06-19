@@ -1,138 +1,155 @@
-from datetime import timedelta
 from typing import Annotated
 
+from app.core.exceptions import DuplicateUserError, InvalidUserError, UnauthorizedError
+from app.core.rate_limit import limiter
 from app.database import get_db
-from app.models import models
-from app.schemas.schemas import Token, UserCreate, UserResponse
-from app.core.settings import settings
-from app.utils.auth import (
-    create_token,
-    hash_password,
-    oauth2_scheme,
-    verify_password,
-    verify_token,
+from app.schemas.schemas import GenericResponse, Token, UserCreate, UserResponse
+from app.services.auth import (
+    create_user,
+    get_current_user_data,
+    login_user,
+    logout_user,
+    refresh_user_token,
 )
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from app.utils.auth import oauth2_scheme
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import func, select
+from jwt.exceptions import InvalidTokenError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserResponse)
+@limiter.limit("5/minute")
 async def register_user(
     user_data: UserCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    request: Request,
 ):
-    select_response = await db.execute(
-        select(models.User.email).where(
-            func.lower(models.User.email) == user_data.email.lower()
-        )
-    )
-    if select_response.scalars().first():
+    try:
+        new_user = await create_user(user_data=user_data, db=db)
+    except DuplicateUserError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already exists!",
         )
 
-    new_user = models.User(
-        name=user_data.name,
-        email=user_data.email.lower(),
-        password_hash=hash_password(user_data.password),
-    )
-
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
-
     return new_user
 
 
 @router.post("/login", response_model=Token)
+@limiter.limit("5/minute")
 async def login(
     user_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Annotated[AsyncSession, Depends(get_db)],
+    request: Request,
     response: Response,
 ):
-    select_response = await db.execute(
-        select(models.User).where(
-            func.lower(models.User.email) == user_data.username.lower()
+    try:
+        access_token, refresh_token = await login_user(
+            username=user_data.username,
+            password=user_data.password,
+            db=db,
         )
-    )
 
-    user = select_response.scalars().first()
-
-    if not user or not verify_password(user_data.password, user.password_hash):
+    except UnauthorizedError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             headers={"WWW-Authenticate": "Bearer"},
             detail="Incorrect email or password",
         )
 
-    access_token_expiry = timedelta(minutes=int(settings.token_expiry_minutes))
-    access_token = create_token({"sub": str(user.id)}, access_token_expiry, "access")
-
-    refresh_token_expiry = timedelta(minutes=int(settings.token_expiry_days))
-    refresh_token = create_token({"sub": str(user.id)}, refresh_token_expiry, "refresh")
-
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
-        expires=str(refresh_token_expiry),
         httponly=True,
         secure=True,
     )
 
-    return Token(access_token=access_token, token_type="bearer")
+    return access_token
 
 
-@router.get("/refresh", response_model=Token)
-async def refresh(refresh_token: Annotated[str | None, Cookie()]):
-    user_id = verify_token(refresh_token, "refresh")
-
-    if user_id is None:
+@router.post("/logout")
+@limiter.limit("5/minute")
+async def logout(
+    request: Request,
+    refresh_token: Annotated[str | None, Cookie()] = None,
+):
+    if refresh_token is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
+            detail="Refresh token not provided",
         )
 
-    access_token_expiry = timedelta(minutes=int(settings.token_expiry_minutes))
-    new_access_token = create_token({"sub": user_id}, access_token_expiry, "access")
+    try:
+        await logout_user(refresh_token)
 
-    return Token(access_token=new_access_token, token_type="bearer")
+    except InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+
+    return GenericResponse(message="User logged out")
+
+
+@router.post("/refresh", response_model=Token)
+@limiter.limit("5/minute")
+async def refresh(
+    request: Request,
+    response: Response,
+    refresh_token: Annotated[str | None, Cookie()] = None,
+):
+    if refresh_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token not provided",
+        )
+
+    try:
+        new_access_token, new_refreh_token = await refresh_user_token(
+            refresh_token=refresh_token,
+        )
+    except InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refreh_token,
+        httponly=True,
+        secure=True,
+    )
+
+    return new_access_token
 
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    token: Annotated[str | None, Depends(oauth2_scheme)] = None,
 ):
-    user_id = verify_token(token, "access")
-    if user_id is None:
+
+    if token is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
+            detail="Access token not provided",
         )
 
     try:
-        user_id_int = int(user_id)
+        user_data = await get_current_user_data(token=token, db=db)
     except (ValueError, TypeError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
+            detail="Invalid access token",
         )
-
-    select_result = await db.execute(
-        select(models.User).where(models.User.id == user_id_int)
-    )
-
-    user = select_result.scalars().first()
-
-    if not user:
+    except InvalidUserError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User does not exist",
         )
 
-    return user
+    return user_data

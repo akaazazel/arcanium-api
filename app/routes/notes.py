@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
+from app.core.exceptions import NoteNotFoundError
 from app.database import get_db
 from app.routes.auth import get_current_user
 from app.schemas.schemas import (
@@ -12,7 +13,7 @@ from app.schemas.schemas import (
 )
 from app.services import notes
 from app.utils.notes import decrypt
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(tags=["notes"])
@@ -39,7 +40,13 @@ async def get_note(
     db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[UserResponse, Depends(get_current_user)],
 ):
-    result = await notes.get_note(note_id=note_id, user_id=user.id, db=db)
+    try:
+        result = await notes.get_note(note_id=note_id, user_id=user.id, db=db)
+    except NoteNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
 
     return NoteResponse(
         id=result.id,
@@ -79,9 +86,16 @@ async def update_notes(
     user: Annotated[UserResponse, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await notes.update_note(
-        user_id=user.id, note_id=note_id, note_data=note_data, db=db
-    )
+
+    try:
+        result = await notes.update_note(
+            user_id=user.id, note_id=note_id, note_data=note_data, db=db
+        )
+    except NoteNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
 
     return GenericResponse(message="Note updated")
 
@@ -92,10 +106,17 @@ async def delete_note(
     user: Annotated[UserResponse, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await notes.delete_note(
-        note_id=note_id,
-        user_id=user.id,
-        db=db,
-    )
+
+    try:
+        result = await notes.delete_note(
+            note_id=note_id,
+            user_id=user.id,
+            db=db,
+        )
+    except NoteNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
 
     return GenericResponse(message="Note deleted")
