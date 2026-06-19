@@ -1,15 +1,15 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from app.core.exceptions import DuplicateUserError, InvalidUserError, UnauthorizedError
-from app.core.settings import settings
 from app.database import r_db
 from app.models import models
 from app.models.models import User
 from app.schemas.schemas import Token, UserCreate
 from app.utils.auth import (
-    create_token,
     decode_token,
+    generate_tokens,
     hash_password,
+    is_token_revoked,
     verify_password,
     verify_token,
 )
@@ -95,43 +95,3 @@ async def get_current_user_data(token: str, db: AsyncSession) -> User:
         raise InvalidUserError("User does not exist")
 
     return user
-
-
-def generate_tokens(user_id: str, response: Response) -> Token:
-    """Generates access token and refresh tokens.\n
-    Puts refresh token into the response cookie and returns the access token
-
-    Args:
-        user_id (str): user id from the database
-        response (Response): response object
-
-    Returns:
-        Token: access token
-    """
-
-    access_token_expiry = timedelta(minutes=int(settings.token_expiry_minutes))
-    access_token = create_token({"sub": user_id}, access_token_expiry, "access")
-
-    refresh_token_expiry = timedelta(days=int(settings.token_expiry_days))
-    refresh_token = create_token({"sub": user_id}, refresh_token_expiry, "refresh")
-
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        expires=str(refresh_token_expiry),
-        httponly=True,
-        secure=True,
-    )
-
-    return Token(access_token=access_token, token_type="bearer")
-
-
-async def is_token_revoked(refresh_token: str):
-    decoded_jwt = decode_token(refresh_token, "refresh")
-
-    jti = decoded_jwt["jti"]
-
-    if await r_db.exists(jti) > 0:
-        return True
-
-    return False
