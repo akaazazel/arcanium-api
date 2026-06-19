@@ -1,13 +1,17 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 import pytest
 from app.utils.auth import (
     create_token,
+    decode_token,
+    generate_tokens,
     hash_password,
+    is_token_revoked,
     verify_password,
     verify_token,
 )
-from jwt.exceptions import InvalidSubjectError
+from jwt.exceptions import InvalidSubjectError, InvalidTokenError
+from fastapi import Response
 
 
 def test_hashing_correct_password():
@@ -72,3 +76,32 @@ def test_token_processing(
     else:
         user_id = verify_token(result, token_type)
         assert user_id == str(data["sub"])
+
+
+@pytest.mark.parametrize(
+    "actual_token_type",
+    ["access", "refresh"],
+)
+@pytest.mark.parametrize(
+    "comparing_token_type",
+    ["access", "refresh"],
+)
+def test_decode_token(actual_token_type, comparing_token_type):
+    user_data = {"sub": "1"}
+    expire_delta = timedelta(days=10)
+
+    token = create_token(
+        data=user_data,
+        expire_delta=expire_delta,
+        token_type=actual_token_type,
+    )
+
+    if (actual_token_type != comparing_token_type) and (
+        comparing_token_type != "access"
+    ):
+        with pytest.raises(InvalidTokenError):
+            decode_token(token, comparing_token_type)
+    else:
+        decoded_token = decode_token(token, comparing_token_type)
+        assert decoded_token is not None
+        assert decoded_token["sub"] == "1"
