@@ -11,7 +11,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.services.auth import create_user, login_user
+from app.services.auth import create_user, login_user, refresh_user_token
 from app.core.exceptions import DuplicateUserError, UnauthorizedError
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -99,17 +99,17 @@ async def refresh(
         )
 
     try:
-        if await is_token_revoked(refresh_token):
-            raise InvalidTokenError
-
-        user_id = verify_token(refresh_token, "refresh")
+        token = await refresh_user_token(
+            refresh_token=refresh_token,
+            response=response,
+        )
     except InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token",
         )
 
-    return generate_tokens(user_id=str(user_id), response=response)
+    return token
 
 
 @router.get("/me", response_model=UserResponse)

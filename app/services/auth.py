@@ -5,10 +5,18 @@ from app.core.settings import settings
 from app.database import r_db
 from app.models import models
 from app.schemas.schemas import Token, UserCreate
-from app.utils.auth import create_token, decode_token, hash_password, verify_password
+from app.utils.auth import (
+    create_token,
+    decode_token,
+    hash_password,
+    verify_password,
+    verify_token,
+)
 from fastapi import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import HTTPException, status
+from jwt.exceptions import InvalidTokenError
 
 
 async def create_user(user_data: UserCreate, db: AsyncSession) -> models.User:
@@ -48,7 +56,6 @@ async def login_user(
 
     if not user or not verify_password(password, user.password_hash):
         raise UnauthorizedError
-        
 
     return generate_tokens(user_id=str(user.id), response=response)
 
@@ -63,6 +70,15 @@ async def logout_user(refresh_token: str) -> None:
     ttl = int((exp - cur).total_seconds())
 
     await r_db.set(jti, 1, ex=ttl)
+
+
+async def refresh_user_token(refresh_token: str, response: Response) -> Token:
+    if await is_token_revoked(refresh_token):
+        raise InvalidTokenError
+
+    user_id = verify_token(refresh_token, "refresh")
+
+    return generate_tokens(user_id=str(user_id), response=response)
 
 
 def generate_tokens(user_id: str, response: Response) -> Token:
