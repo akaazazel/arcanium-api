@@ -1,11 +1,11 @@
 from datetime import UTC, datetime, timedelta
 
-from app.core.exceptions import DuplicateUserError
+from app.core.exceptions import DuplicateUserError, UnauthorizedError
 from app.core.settings import settings
 from app.database import r_db
 from app.models import models
 from app.schemas.schemas import Token, UserCreate
-from app.utils.auth import create_token, decode_token, hash_password
+from app.utils.auth import create_token, decode_token, hash_password, verify_password
 from fastapi import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,6 +32,25 @@ async def create_user(user_data: UserCreate, db: AsyncSession) -> models.User:
     await db.refresh(new_user)
 
     return new_user
+
+
+async def login_user(
+    username: str,
+    password: str,
+    db: AsyncSession,
+    response: Response,
+) -> Token:
+    select_response = await db.execute(
+        select(models.User).where(func.lower(models.User.email) == username.lower())
+    )
+
+    user = select_response.scalars().first()
+
+    if not user or not verify_password(password, user.password_hash):
+        raise UnauthorizedError
+        
+
+    return generate_tokens(user_id=str(user.id), response=response)
 
 
 async def logout_user(refresh_token: str) -> None:

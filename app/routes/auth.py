@@ -11,8 +11,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.services.auth import create_user
-from app.core.exceptions import DuplicateUserError
+from app.services.auth import create_user, login_user
+from app.core.exceptions import DuplicateUserError, UnauthorizedError
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -25,14 +25,14 @@ async def register_user(
     request: Request,
 ):
     try:
-        response = await create_user(user_data=user_data, db=db)
+        new_user = await create_user(user_data=user_data, db=db)
     except DuplicateUserError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already exists!",
         )
 
-    return response
+    return new_user
 
 
 @router.post("/login", response_model=Token)
@@ -43,22 +43,22 @@ async def login(
     request: Request,
     response: Response,
 ):
-    select_response = await db.execute(
-        select(models.User).where(
-            func.lower(models.User.email) == user_data.username.lower()
+    try:
+        token = await login_user(
+            username=user_data.username,
+            password=user_data.password,
+            db=db,
+            response=response,
         )
-    )
 
-    user = select_response.scalars().first()
-
-    if not user or not verify_password(user_data.password, user.password_hash):
+    except UnauthorizedError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             headers={"WWW-Authenticate": "Bearer"},
             detail="Incorrect email or password",
         )
 
-    return generate_tokens(user_id=str(user.id), response=response)
+    return token
 
 
 @router.post("/logout")
