@@ -66,7 +66,7 @@ def create_token(data: dict[str, Any], expire_delta: timedelta, token_type: str)
     return encoded_jwt
 
 
-def generate_tokens(user_id: str, response: Response) -> Token:
+def generate_tokens(user_id: str) -> tuple[Token, str]:
     """Generates access token and refresh tokens.\n
     Puts refresh token into the response cookie and returns the access token
 
@@ -84,15 +84,7 @@ def generate_tokens(user_id: str, response: Response) -> Token:
     refresh_token_expiry = timedelta(days=int(settings.token_expiry_days))
     refresh_token = create_token({"sub": user_id}, refresh_token_expiry, "refresh")
 
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        expires=str(refresh_token_expiry),
-        httponly=True,
-        secure=True,
-    )
-
-    return Token(access_token=access_token, token_type="bearer")
+    return (Token(access_token=access_token, token_type="bearer"), refresh_token)
 
 
 def decode_token(token: str, token_type: str) -> dict[str, str]:

@@ -57,7 +57,16 @@ async def login_user(
     if not user or not verify_password(password, user.password_hash):
         raise UnauthorizedError
 
-    return generate_tokens(user_id=str(user.id), response=response)
+    access_token, refresh_token = generate_tokens(user_id=str(user.id))
+
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+    )
+
+    return access_token
 
 
 async def logout_user(refresh_token: str) -> None:
@@ -78,7 +87,16 @@ async def refresh_user_token(refresh_token: str, response: Response) -> Token:
 
     user_id = verify_token(refresh_token, "refresh")
 
-    return generate_tokens(user_id=str(user_id), response=response)
+    access_token, refresh_token = generate_tokens(user_id=str(user_id))
+
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+    )
+
+    return access_token
 
 
 async def get_current_user_data(token: str, db: AsyncSession) -> User:
