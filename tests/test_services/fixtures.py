@@ -4,11 +4,6 @@ from app.models.models import Note, User
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy_utils import create_database, database_exists
-
-postgre_url = "postgresql+psycopg://postgres:unsettled@postgres:5432/arcanium_test_db"
-engine = create_async_engine(postgre_url)
-Session = async_sessionmaker(bind=engine, expire_on_commit=False)
-
 from tests.test_services.utils import (
     add_to_db,
     get_note_model,
@@ -16,6 +11,10 @@ from tests.test_services.utils import (
     note_factory,
     user_factory,
 )
+
+postgre_url = "postgresql+psycopg://postgres:unsettled@postgres:5432/arcanium_test_db"
+engine = create_async_engine(postgre_url)
+Session = async_sessionmaker(bind=engine, expire_on_commit=False)
 
 
 @pytest_asyncio.fixture(scope="session")
