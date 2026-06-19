@@ -9,7 +9,7 @@ postgre_url = "postgresql+psycopg://postgres:unsettled@postgres:5432/arcanium_te
 engine = create_async_engine(postgre_url)
 Session = async_sessionmaker(bind=engine, expire_on_commit=False)
 
-from tests.test_services.test_services_notes.utils import (
+from tests.test_services.utils import (
     add_to_db,
     get_note_model,
     get_user_model,

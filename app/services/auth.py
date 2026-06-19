@@ -46,8 +46,7 @@ async def login_user(
     username: str,
     password: str,
     db: AsyncSession,
-    response: Response,
-) -> Token:
+) -> tuple[Token, str]:
     select_response = await db.execute(
         select(models.User).where(func.lower(models.User.email) == username.lower())
     )
@@ -57,16 +56,7 @@ async def login_user(
     if not user or not verify_password(password, user.password_hash):
         raise UnauthorizedError
 
-    access_token, refresh_token = generate_tokens(user_id=str(user.id))
-
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=True,
-    )
-
-    return access_token
+    return generate_tokens(user_id=str(user.id))
 
 
 async def logout_user(refresh_token: str) -> None:
@@ -81,22 +71,13 @@ async def logout_user(refresh_token: str) -> None:
     await r_db.set(jti, 1, ex=ttl)
 
 
-async def refresh_user_token(refresh_token: str, response: Response) -> Token:
+async def refresh_user_token(refresh_token: str) -> tuple[Token, str]:
     if await is_token_revoked(refresh_token):
         raise InvalidTokenError
 
     user_id = verify_token(refresh_token, "refresh")
 
-    access_token, refresh_token = generate_tokens(user_id=str(user_id))
-
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=True,
-    )
-
-    return access_token
+    return generate_tokens(user_id=str(user_id))
 
 
 async def get_current_user_data(token: str, db: AsyncSession) -> User:

@@ -14,12 +14,12 @@ from app.utils.notes import decrypt
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from tests.test_services.test_services_notes.fixtures import (
+from tests.test_services.fixtures import (
     db,
     init_db,
     insert_user_and_note_factory,
 )
-from tests.test_services.test_services_notes.utils import (
+from tests.test_services.utils import (
     add_to_db,
     get_note_model,
     get_user_model,

@@ -1,23 +1,21 @@
 from typing import Annotated
 
+from app.core.exceptions import DuplicateUserError, InvalidUserError, UnauthorizedError
 from app.core.rate_limit import limiter
 from app.database import get_db
-from app.models import models
 from app.schemas.schemas import GenericResponse, Token, UserCreate, UserResponse
-from app.services.auth import generate_tokens, is_token_revoked, logout_user
-from app.utils.auth import hash_password, oauth2_scheme, verify_password, verify_token
+from app.services.auth import (
+    create_user,
+    get_current_user_data,
+    login_user,
+    logout_user,
+    refresh_user_token,
+)
+from app.utils.auth import oauth2_scheme
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.services.auth import (
-    create_user,
-    login_user,
-    refresh_user_token,
-    get_current_user_data,
-)
-from app.core.exceptions import DuplicateUserError, UnauthorizedError, InvalidUserError
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -49,11 +47,10 @@ async def login(
     response: Response,
 ):
     try:
-        token = await login_user(
+        access_token, refresh_token = await login_user(
             username=user_data.username,
             password=user_data.password,
             db=db,
-            response=response,
         )
 
     except UnauthorizedError:
@@ -63,7 +60,14 @@ async def login(
             detail="Incorrect email or password",
         )
 
-    return token
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+    )
+
+    return access_token
 
 
 @router.post("/logout")
@@ -104,9 +108,8 @@ async def refresh(
         )
 
     try:
-        token = await refresh_user_token(
+        new_access_token, new_refreh_token = await refresh_user_token(
             refresh_token=refresh_token,
-            response=response,
         )
     except InvalidTokenError:
         raise HTTPException(
@@ -114,7 +117,14 @@ async def refresh(
             detail="Invalid refresh token",
         )
 
-    return token
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refreh_token,
+        httponly=True,
+        secure=True,
+    )
+
+    return new_access_token
 
 
 @router.get("/me", response_model=UserResponse)
