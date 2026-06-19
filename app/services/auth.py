@@ -1,10 +1,49 @@
 from datetime import UTC, datetime, timedelta
 
+from app.core.exceptions import DuplicateUserError
 from app.core.settings import settings
 from app.database import r_db
-from app.schemas.schemas import Token
-from app.utils.auth import create_token, decode_token
+from app.models import models
+from app.schemas.schemas import Token, UserCreate
+from app.utils.auth import create_token, decode_token, hash_password
 from fastapi import Response
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+
+async def create_user(user_data: UserCreate, db: AsyncSession) -> models.User:
+    select_response = await db.execute(
+        select(models.User.email).where(
+            func.lower(models.User.email) == user_data.email.lower()
+        )
+    )
+
+    if select_response.scalars().first():
+        raise DuplicateUserError
+
+    new_user = models.User(
+        name=user_data.name,
+        email=user_data.email.lower(),
+        password_hash=hash_password(user_data.password),
+    )
+
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+
+    return new_user
+
+
+async def logout_user(refresh_token: str) -> None:
+
+    decoded_jwt = decode_token(refresh_token, "refresh")
+
+    jti = decoded_jwt["jti"]
+    exp = datetime.fromtimestamp(int(decoded_jwt["exp"]), tz=UTC)
+    cur = datetime.now(UTC)
+    ttl = int((exp - cur).total_seconds())
+
+    await r_db.set(jti, 1, ex=ttl)
 
 
 def generate_tokens(user_id: str, response: Response) -> Token:
@@ -34,18 +73,6 @@ def generate_tokens(user_id: str, response: Response) -> Token:
     )
 
     return Token(access_token=access_token, token_type="bearer")
-
-
-async def logout_user(refresh_token: str) -> None:
-
-    decoded_jwt = decode_token(refresh_token, "refresh")
-
-    jti = decoded_jwt["jti"]
-    exp = datetime.fromtimestamp(int(decoded_jwt["exp"]), tz=UTC)
-    cur = datetime.now(UTC)
-    ttl = int((exp - cur).total_seconds())
-
-    await r_db.set(jti, 1, ex=ttl)
 
 
 async def is_token_revoked(refresh_token: str):

@@ -11,6 +11,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.services.auth import create_user
+from app.core.exceptions import DuplicateUserError
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -22,28 +24,15 @@ async def register_user(
     db: Annotated[AsyncSession, Depends(get_db)],
     request: Request,
 ):
-    select_response = await db.execute(
-        select(models.User.email).where(
-            func.lower(models.User.email) == user_data.email.lower()
-        )
-    )
-    if select_response.scalars().first():
+    try:
+        response = await create_user(user_data=user_data, db=db)
+    except DuplicateUserError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already exists!",
         )
 
-    new_user = models.User(
-        name=user_data.name,
-        email=user_data.email.lower(),
-        password_hash=hash_password(user_data.password),
-    )
-
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
-
-    return new_user
+    return response
 
 
 @router.post("/login", response_model=Token)
