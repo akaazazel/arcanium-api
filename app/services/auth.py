@@ -1,9 +1,10 @@
 from datetime import UTC, datetime, timedelta
 
-from app.core.exceptions import DuplicateUserError, UnauthorizedError
+from app.core.exceptions import DuplicateUserError, InvalidUserError, UnauthorizedError
 from app.core.settings import settings
 from app.database import r_db
 from app.models import models
+from app.models.models import User
 from app.schemas.schemas import Token, UserCreate
 from app.utils.auth import (
     create_token,
@@ -13,10 +14,9 @@ from app.utils.auth import (
     verify_token,
 )
 from fastapi import Response
+from jwt.exceptions import InvalidTokenError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException, status
-from jwt.exceptions import InvalidTokenError
 
 
 async def create_user(user_data: UserCreate, db: AsyncSession) -> models.User:
@@ -79,6 +79,22 @@ async def refresh_user_token(refresh_token: str, response: Response) -> Token:
     user_id = verify_token(refresh_token, "refresh")
 
     return generate_tokens(user_id=str(user_id), response=response)
+
+
+async def get_current_user_data(token: str, db: AsyncSession) -> User:
+
+    user_id = verify_token(token, "access")
+    user_id_int = int(user_id)
+
+    select_result = await db.execute(
+        select(models.User).where(models.User.id == user_id_int)
+    )
+    user = select_result.scalars().first()
+
+    if not user:
+        raise InvalidUserError("User does not exist")
+
+    return user
 
 
 def generate_tokens(user_id: str, response: Response) -> Token:

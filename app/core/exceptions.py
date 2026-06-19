@@ -39,11 +39,16 @@ class NoteNotFoundError(Exception):
         super().__init__(message)
 
 
+class UnauthorizedError(Exception):
+    def __init__(self, message: str = "No authorization") -> None:
+        super().__init__(message)
+
+
 class DuplicateUserError(Exception):
     def __init__(self, message: str = "User already exists") -> None:
         super().__init__(message)
 
 
-class UnauthorizedError(Exception):
-    def __init__(self, message: str = "No authorization") -> None:
+class InvalidUserError(Exception):
+    def __init__(self, message: str = "User does not exist") -> None:
         super().__init__(message)

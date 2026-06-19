@@ -11,8 +11,13 @@ from fastapi.security import OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.services.auth import create_user, login_user, refresh_user_token
-from app.core.exceptions import DuplicateUserError, UnauthorizedError
+from app.services.auth import (
+    create_user,
+    login_user,
+    refresh_user_token,
+    get_current_user_data,
+)
+from app.core.exceptions import DuplicateUserError, UnauthorizedError, InvalidUserError
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -124,26 +129,17 @@ async def get_current_user(
             detail="Access token not provided",
         )
 
-    user_id = verify_token(token, "access")
-
     try:
-        user_id_int = int(user_id)
+        user_data = await get_current_user_data(token=token, db=db)
     except (ValueError, TypeError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid access token",
         )
-
-    select_result = await db.execute(
-        select(models.User).where(models.User.id == user_id_int)
-    )
-
-    user = select_result.scalars().first()
-
-    if not user:
+    except InvalidUserError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User does not exist",
         )
 
-    return user
+    return user_data
