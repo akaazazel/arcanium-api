@@ -20,10 +20,8 @@ async def get_db():
 
 # Redis
 
-r_db = Redis(
-    host=settings.redis_host,
-    port=settings.redis_port,
-    password=settings.redis_password,
+
+r_db = Redis.from_url(
+    url=f"{settings.redis_url}/{settings.redis_token_db}",
     decode_responses=True,
-    db=settings.redis_token_db,
 )

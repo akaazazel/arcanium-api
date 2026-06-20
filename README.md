@@ -243,9 +243,8 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres_password
 POSTGRES_DB=postgres_db_name
 
-REDIS_HOST=redis
-REDIS_PORT=6379
 REDIS_PASSWORD=redis_password
+REDIS_URL=redis://:password@host:6379
 REDIS_TOKEN_DB=0
 REDIS_LIMITER_DB=1
 

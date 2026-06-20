@@ -14,11 +14,10 @@ class Settings(BaseSettings):
     postgres_password: str
     postgres_db: str = "arcanium_db"
 
-    redis_host: str = "redis"
-    redis_port: int = 6379
     redis_password: str
-    redis_token_db: int = 0
-    redis_limiter_db: int = 1
+    redis_url: str
+    redis_token_db: str = ""
+    redis_limiter_db: str = ""
 
     secret_key: str
     encryption_key: str
@@ -29,10 +28,6 @@ class Settings(BaseSettings):
     @property
     def postgres_url(self) -> str:
         return f"postgresql+psycopg://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
-
-    @property
-    def redis_url(self) -> str:
-        return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/"
 
 
 @lru_cache
