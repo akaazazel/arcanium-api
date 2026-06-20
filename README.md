@@ -24,6 +24,10 @@
 - [Arcanium API](#arcanium-api)
     - [Table of Contents](#table-of-contents)
     - [About](#about)
+        - [Production Deployement](#production-deployement)
+            - [Infrastructure](#infrastructure)
+            - [Hosting](#hosting)
+            - [Live API](#live-api)
     - [Features](#features)
     - [Architecture](#architecture)
         - [Request Flow](#request-flow)
@@ -75,6 +79,24 @@ To protect user data, note contents are encrypted before being stored in the dat
 <!-- ### Demo -->
 
 <!-- _Add screenshots, API documentation links, or deployment URLs here._ -->
+
+### Production Deployement
+
+#### Infrastructure
+
+- FastAPI application running in Docker
+- PostgreSQL database
+- Redis cache
+
+#### Hosting
+
+- Backend: Render
+- Database: Neon
+- Redis: Upstash
+
+#### Live API
+
+[arcanium-api.onrender.com](https://arcanium-api.onrender.com)
 
 ---
 
@@ -248,8 +270,8 @@ REDIS_URL=redis://:password@host:6379
 REDIS_TOKEN_DB=0
 REDIS_LIMITER_DB=1
 
-SECRET_KEY=a881879338337a905f979fab8191a05bbba9874daf156c6c6271a61f6c3e426d
-ENCRYPTION_KEY=77Z1hqpoiR_lYsmEB6PPspQKDkZJspt3RR3HiG7xsOY=
+SECRET_KEY=a881879332337a905f979fa98191a05bbba9874daf151c6c6271a61f6c3e426d
+ENCRYPTION_KEY=77Z1hqpoir_lYsmEB6PPvpQKDkZJspt3RR3DiG7xsOY=
 ALGORITHM=HS256
 TOKEN_EXPIRY_MINUTES=5
 TOKEN_EXPIRY_DAYS=30

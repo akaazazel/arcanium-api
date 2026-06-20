@@ -44,8 +44,9 @@ async def api_middlelware(request: Request, call_next):
 
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    # Uncomment on production
-    # response.headers["Strict-Transport-Security"] = "max-age=3153600; includeSubDomains"
+
+    # NOTE: Disable "Strict-Transport-Security" header when running locally
+    response.headers["Strict-Transport-Security"] = "max-age=3153600; includeSubDomains"
 
     return response
 
