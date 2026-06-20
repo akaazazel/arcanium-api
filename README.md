@@ -1,7 +1,7 @@
 # Arcanium API
 
 <p align="center">
-  <img width="200" height="200" src="https://i.imgur.com/6wj0hh6.jpg" alt="Arcanium API Logo">
+  <img width="200" height="200" src="/media/logo.png" alt="Arcanium API Logo">
 </p>
 
 <h3 align="center">Arcanium API</h3>
@@ -22,47 +22,47 @@
 ## Table of Contents
 
 - [Arcanium API](#arcanium-api)
-  - [Table of Contents](#table-of-contents)
-  - [About](#about)
-    - [Demo](#demo)
-  - [Features](#features)
-  - [Architecture](#architecture)
-    - [Request Flow](#request-flow)
-    - [Architecture Overview](#architecture-overview)
-  - [Security Considerations](#security-considerations)
-    - [Authentication \& Token Management](#authentication--token-management)
-      - [Refresh Token Rotation](#refresh-token-rotation)
-      - [Refresh Token Revocation](#refresh-token-revocation)
-    - [Data Protection](#data-protection)
-      - [Note Encryption](#note-encryption)
-    - [Password Security](#password-security)
-    - [Security Headers](#security-headers)
-    - [Rate Limiting](#rate-limiting)
-  - [Getting Started](#getting-started)
-    - [Prerequisites](#prerequisites)
-    - [Installation](#installation)
-      - [1. Clone the repository](#1-clone-the-repository)
-      - [2. Create an environment file](#2-create-an-environment-file)
-      - [3. Build and start the application](#3-build-and-start-the-application)
-    - [Accessing the API](#accessing-the-api)
-  - [Running Tests](#running-tests)
-  - [API Reference](#api-reference)
-    - [Authentication](#authentication)
-    - [Notes](#notes)
-      - [Query Parameters](#query-parameters)
-  - [Deployment](#deployment)
-  - [Built With](#built-with)
-    - [Backend Framework](#backend-framework)
-    - [Programming Language](#programming-language)
-    - [Database](#database)
-    - [ORM \& Database Management](#orm--database-management)
-    - [Security](#security)
-    - [API Protection](#api-protection)
-    - [Testing](#testing)
-    - [DevOps \& Deployment](#devops--deployment)
-  - [Author](#author)
-  - [Known Limitations](#known-limitations)
-  - [Acknowledgements](#acknowledgements)
+    - [Table of Contents](#table-of-contents)
+    - [About](#about)
+    - [Features](#features)
+    - [Architecture](#architecture)
+        - [Request Flow](#request-flow)
+        - [Architecture Overview](#architecture-overview)
+        - [Detailed Diagram](#detailed-diagram)
+    - [Security Considerations](#security-considerations)
+        - [Authentication \& Token Management](#authentication--token-management)
+            - [Refresh Token Rotation](#refresh-token-rotation)
+            - [Refresh Token Revocation](#refresh-token-revocation)
+        - [Data Protection](#data-protection)
+            - [Note Encryption](#note-encryption)
+        - [Password Security](#password-security)
+        - [Security Headers](#security-headers)
+        - [Rate Limiting](#rate-limiting)
+    - [Getting Started](#getting-started)
+        - [Prerequisites](#prerequisites)
+        - [Installation](#installation)
+            - [1. Clone the repository](#1-clone-the-repository)
+            - [2. Create an environment file](#2-create-an-environment-file)
+            - [3. Build and start the application](#3-build-and-start-the-application)
+        - [Accessing the API](#accessing-the-api)
+    - [Running Tests](#running-tests)
+    - [API Reference](#api-reference)
+        - [Authentication](#authentication)
+        - [Notes](#notes)
+            - [`GET /notes` Query Parameters](#get-notes-query-parameters)
+    - [Deployment](#deployment)
+    - [Built With](#built-with)
+        - [Backend Framework](#backend-framework)
+        - [Programming Language](#programming-language)
+        - [Database](#database)
+        - [ORM \& Database Management](#orm--database-management)
+        - [Security](#security)
+        - [API Protection](#api-protection)
+        - [Testing](#testing)
+        - [DevOps \& Deployment](#devops--deployment)
+    - [Author](#author)
+    - [Known Limitations](#known-limitations)
+    - [Acknowledgements](#acknowledgements)
 
 ---
 
@@ -72,9 +72,9 @@ Arcanium API is a secure note management REST API that allows users to register,
 
 To protect user data, note contents are encrypted before being stored in the database. The API also includes JWT-based authentication, refresh token rotation, rate limiting, and security-focused middleware.
 
-### Demo
+<!-- ### Demo -->
 
-_Add screenshots, API documentation links, or deployment URLs here._
+<!-- _Add screenshots, API documentation links, or deployment URLs here._ -->
 
 ---
 
@@ -99,25 +99,7 @@ Every incoming request passes through a series of middleware components before r
 
 ### Request Flow
 
-```text
-Client
-  ↓
-Middleware
-  ├─ CORS
-  ├─ SlowAPI Rate Limiter
-  └─ Security Headers
-  ↓
-Dependencies
-  ├─ get_db()
-  ├─ OAuth2 Scheme
-  └─ get_current_user()
-  ↓
-Routes
-  ↓
-Services
-  ↓
-Database / Redis
-```
+![Arcanium API Architecture](/media/request_flow.png)
 
 ### Architecture Overview
 
@@ -152,6 +134,8 @@ Database / Redis
     - Stores revoked refresh tokens.
     - Used by SlowAPI for rate limiting.
 
+### Detailed Diagram
+
 ![Arcanium API Architecture](/media/architecture.png)
 
 ---
@@ -184,8 +168,6 @@ When a refresh token is used to request new tokens, its revocation status is ver
 
 Note contents are encrypted using Fernet symmetric encryption before being stored in the database.
 
-Benefits include:
-
 - Stored note contents remain unreadable without the encryption key.
 - Encrypting the same plaintext multiple times produces different ciphertext values due to random initialization vectors.
 - Data can be securely decrypted when accessed by authorized users.
@@ -195,8 +177,6 @@ Benefits include:
 Passwords are never stored in plaintext.
 
 The API uses Argon2id for password hashing, which is considered one of the strongest modern password hashing algorithms.
-
-Features include:
 
 - One-way irreversible hashing.
 - Automatic salt generation.
@@ -257,21 +237,21 @@ cd arcanium-api
 Create a `.env` file in the project root using the provided `.env.example` as a reference.
 
 ```env
-POSTGRES_HOST=postgres_host
-POSTGRES_PORT=postgres_port
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
 POSTGRES_PASSWORD=postgres_password
-POSTGRES_DB=postgres_db
+POSTGRES_DB=postgres_db_name
 
-REDIS_HOST=redis_host
-REDIS_PORT=redis_port
+REDIS_HOST=redis
+REDIS_PORT=6379
 REDIS_PASSWORD=redis_password
 REDIS_TOKEN_DB=0
 REDIS_LIMITER_DB=1
 
-SECRET_KEY=secret_key
-ENCRYPTION_KEY=encryption_key
-ALGORITHM=algorithm
-TOKEN_EXPIRY_MINUTES=30
+SECRET_KEY=a881879338337a905f979fab8191a05bbba9874daf156c6c6271a61f6c3e426d
+ENCRYPTION_KEY=77Z1hqpoiR_lYsmEB6PPspQKDkZJspt3RR3HiG7xsOY=
+ALGORITHM=HS256
+TOKEN_EXPIRY_MINUTES=5
 TOKEN_EXPIRY_DAYS=30
 ```
 
@@ -331,13 +311,13 @@ python -m pytest
 
 ### Authentication
 
-| Method | Endpoint    | Description                             |
-| ------ | ----------- | --------------------------------------- |
-| POST   | `/register` | Register a new user                     |
-| POST   | `/login`    | Authenticate a user                     |
-| POST   | `/logout`   | Revoke the current session              |
-| POST   | `/refresh`  | Generate a new access and refresh token |
-| GET    | `/me`       | Retrieve the current user's profile     |
+| Method | Endpoint         | Description                             |
+| ------ | ---------------- | --------------------------------------- |
+| POST   | `/auth/register` | Register a new user                     |
+| POST   | `/auth/login`    | Authenticate a user                     |
+| POST   | `/auth/logout`   | Revoke the current session              |
+| POST   | `/auth/refresh`  | Generate a new access and refresh token |
+| GET    | `/auth/me`       | Retrieve the current user's profile     |
 
 ### Notes
 
@@ -349,7 +329,7 @@ python -m pytest
 | PUT    | `/notes/{note_id}` | Update a note            |
 | DELETE | `/notes/{note_id}` | Delete a note            |
 
-#### Query Parameters
+#### `GET /notes` Query Parameters
 
 | Parameter     | Description                       |
 | ------------- | --------------------------------- |
@@ -400,7 +380,7 @@ Production deployment should always use HTTPS.
 ### Security
 
 - **JWT (JSON Web Tokens)** – Stateless authentication mechanism.
-- **Passlib** – Password hashing and verification.
+- **pwdlib** – Password hashing and verification.
 - **Fernet Encryption** – Encryption of note contents before storage.
 
 ### API Protection
