@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     postgres_host: str = "postgres"
     postgres_port: int = 5432
+    postgres_user: str = "postgres"
     postgres_password: str
     postgres_db: str = "arcanium_db"
 
@@ -27,7 +28,7 @@ class Settings(BaseSettings):
 
     @property
     def postgres_url(self) -> str:
-        return f"postgresql+psycopg://{self.postgres_host}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        return f"postgresql+psycopg://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
 
     @property
     def redis_url(self) -> str:

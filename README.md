@@ -239,6 +239,7 @@ Create a `.env` file in the project root using the provided `.env.example` as a 
 ```env
 POSTGRES_HOST=postgres
 POSTGRES_PORT=5432
+POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres_password
 POSTGRES_DB=postgres_db_name
 
