@@ -37,16 +37,6 @@ app.state.limiter = limiter
 
 # Middlewares
 
-app.add_middleware(
-    cors.CORSMiddleware,
-    allow_origins=["https://hei.com"],  # configure of productions
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.add_middleware(SlowAPIMiddleware)
-
 
 @app.middleware("http")
 async def api_middlelware(request: Request, call_next):
@@ -59,6 +49,17 @@ async def api_middlelware(request: Request, call_next):
 
     return response
 
+
+app.add_middleware(SlowAPIMiddleware)
+
+
+app.add_middleware(
+    cors.CORSMiddleware,
+    allow_origins=["https://hei.com"],  # configure of productions
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Routers
 
